@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+
+# Build
+dist/
+build/
+*.tsbuildinfo
+
+# Env / secrets
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Runtime / Midscene artifacts
+**/midscene_run/
+*.log
+logs/
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# Coverage / caches
+coverage/
+.nyc_output/
+.cache/
+.turbo/
+.eslintcache
+
+# Misc
+*.pem
+*.tgz
