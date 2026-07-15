@@ -1,0 +1,23 @@
+{
+  "name": "@mtp/case-service",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": {
+    "start": "node --import tsx src/main.ts",
+    "dev": "node --import tsx --watch src/main.ts"
+  },
+  "dependencies": {
+    "@mtp/domain-agent": "0.0.0",
+    "@mtp/domain-case": "0.0.0",
+    "@mtp/shared-kernel": "0.0.0",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.4",
+    "typescript": "^5.7.0"
+  }
+}
