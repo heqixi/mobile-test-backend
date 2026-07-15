@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "composite": true,
+    "rootDir": "src",
+    "outDir": "dist",
+    "noEmit": false
+  },
+  "references": [
+    { "path": "../shared-kernel" },
+    { "path": "../domain-agent" }
+  ],
+  "include": ["src"]
+}
