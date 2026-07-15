@@ -1,0 +1,21 @@
+{
+  "name": "mobile-test-backend",
+  "private": true,
+  "type": "module",
+  "description": "Mobile test backend: Agent + Case + Executor",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "typecheck": "tsc -b tsconfig.build.json",
+    "executor:serve": "npm run start -w @mtp/executor-service",
+    "executor:dev": "npm run dev -w @mtp/executor-service",
+    "case:serve": "npm run start -w @mtp/case-service",
+    "case:dev": "npm run dev -w @mtp/case-service"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.4",
+    "typescript": "^5.7.0"
+  }
+}

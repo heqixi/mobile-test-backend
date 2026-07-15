@@ -1,0 +1,12 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./packages/shared-kernel" },
+    { "path": "./packages/domain-agent" },
+    { "path": "./packages/domain-case" },
+    { "path": "./packages/domain-executor" },
+    { "path": "./apps/agent-service" },
+    { "path": "./apps/executor-service" },
+    { "path": "./apps/case-service" }
+  ]
+}
