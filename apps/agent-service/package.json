@@ -1,0 +1,14 @@
+{
+  "name": "@mtp/agent-service",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": { ".": "./src/index.ts" },
+  "dependencies": {
+    "@mtp/shared-kernel": "0.0.0",
+    "@mtp/domain-agent": "0.0.0",
+    "@mtp/domain-case": "0.0.0"
+  }
+}
