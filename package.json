@@ -5,7 +5,8 @@
   "description": "Mobile test backend: Agent + Case + Executor",
   "workspaces": [
     "packages/*",
-    "apps/*"
+    "apps/*",
+    "business/*"
   ],
   "scripts": {
     "typecheck": "tsc -b tsconfig.build.json",
@@ -13,6 +14,8 @@
     "executor:dev": "npm run dev -w @mtp/executor-service",
     "case:serve": "npm run start -w @mtp/case-service",
     "case:dev": "npm run dev -w @mtp/case-service",
+    "cowork-library:serve": "npm run serve -w @mtp/business-cowork-csv",
+    "cowork-library:dev": "npm run dev -w @mtp/business-cowork-csv",
     "agent:serve": "npm run start -w @mtp/agent-service",
     "agent:dev": "npm run dev -w @mtp/agent-service"
   },
