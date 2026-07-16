@@ -174,6 +174,19 @@ export class ExecutorHttpClient {
       };
     }
   }
+
+  /** POST /aep/v0.2/abort — 中止当前 Midscene aiAct */
+  async abort(reason?: string): Promise<{ aborted: boolean }> {
+    try {
+      return await this.request<{ aborted: boolean }>(
+        'POST',
+        '/aep/v0.2/abort',
+        reason ? { reason } : {},
+      );
+    } catch {
+      return { aborted: false };
+    }
+  }
 }
 
 export function createExecutorHttpClient(
