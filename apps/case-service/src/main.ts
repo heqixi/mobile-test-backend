@@ -1,14 +1,18 @@
 /**
  * Case Service 进程入口
- *
- * 职责：createCaseDomain → HTTP 门面 → 监听。
- * CaseRun / compile_instruction 逻辑全部在 @mtp/domain-case。
  */
 
 import { config as loadEnv } from 'dotenv';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createCaseDomain } from '@mtp/domain-case';
+import {
+  createCaseDataConnector,
+  createCaseDomain,
+} from '@mtp/domain-case';
+import {
+  createConnectorSourceFactory,
+  DEFAULT_LIBRARY_BASE_URL,
+} from './connector/source-factory.js';
 import { createCaseHttpServer } from './http-server.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -21,25 +25,46 @@ const port = Number(
 
 async function main() {
   const domain = createCaseDomain();
+  const connector = createCaseDataConnector();
+  const sourceFactory = createConnectorSourceFactory();
+
+  if (process.env.CASE_AUTO_CONNECT_LIBRARY !== '0') {
+    try {
+      connector.connect(
+        sourceFactory.create({ baseUrl: DEFAULT_LIBRARY_BASE_URL }),
+      );
+    } catch (err) {
+      console.warn(
+        '[case-service] auto-connect library skipped:',
+        err instanceof Error ? err.message : err,
+      );
+    }
+  }
+
   const http = createCaseHttpServer(
     {
       catalog: domain.catalog,
       compiler: domain.compiler,
       runs: domain.runs,
+      connector,
+      sourceFactory,
     },
     { port },
   );
   await http.listen();
 
   const cases = await domain.catalog.listCases();
+  const src = connector.getSourceInfo();
 
   console.log('');
-  console.log('[case-service] ready (HTTP facade only)');
+  console.log('[case-service] ready');
   console.log(`  HTTP       http://${http.host}:${http.port}`);
-  console.log(`  GET        /health /api/cases /api/cases/:caseId`);
-  console.log(`  POST       /api/cases/:caseId/compile`);
-  console.log(`  POST       /api/runs  (+ step/next|retry|skip /abort)`);
-  console.log(`  catalog    ${cases.length} case(s)`);
+  console.log(`  catalog    ${cases.length} demo case(s)`);
+  console.log(
+    `  connector  ${src ? `${src.displayName} (${DEFAULT_LIBRARY_BASE_URL})` : 'not connected'}`,
+  );
+  console.log(`  library    ${DEFAULT_LIBRARY_BASE_URL} (remote business service)`);
+  console.log(`  GET/POST   /api/connector/*`);
   console.log('');
 
   const shutdown = async () => {

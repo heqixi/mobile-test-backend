@@ -1,25 +1,29 @@
 /**
  * @module @mtp/case-service/handlers/case-handlers
  *
- * Case HTTP 契约实现 → Catalog + Compiler + CaseRunPort。
+ * Catalog + 规则 Compiler + CaseRun + DataConnector。
  */
 
-import {
-  CaseDomainError,
-  type CaseCatalogPort,
-  type CaseRunPort,
-  type InstructionCompilerPort,
+import type {
+  CaseCatalogPort,
+  CaseDataConnectorPort,
+  CaseRunPort,
+  ConnectedCompiledBundle,
+  InstructionCompilerPort,
 } from '@mtp/domain-case';
+import { CaseDomainError } from '@mtp/domain-case';
 import type { CaseErrorCode } from '@mtp/shared-kernel';
 import type {
   CaseHttpHandlers,
   CompileCaseHttpRequest,
   CompileCaseHttpResponse,
+  ConnectorConnectRequest,
   StartRunHttpRequest,
   StepNextHttpRequest,
   StepSkipHttpRequest,
 } from '../api/case-http.js';
 import { fail, ok, type HttpResult } from '../api/http-kit.js';
+import type { ConnectorSourceFactory } from '../connector/source-factory.js';
 
 function statusFor(code: CaseErrorCode): number {
   switch (code) {
@@ -30,6 +34,13 @@ function statusFor(code: CaseErrorCode): number {
     case 'NO_MORE_STEPS':
     case 'INVALID_STEP_CURSOR':
     case 'RUN_NOT_RUNNING':
+      return 409;
+    case 'COMPILE_REJECTED':
+    case 'COMPILE_REPAIR_EXHAUSTED':
+      return 422;
+    case 'COMPILE_LLM_FAILED':
+      return 502;
+    case 'CONNECTOR_NOT_CONNECTED':
       return 409;
     default:
       return 400;
@@ -53,15 +64,18 @@ export function createCaseHttpHandlers(deps: {
   catalog: CaseCatalogPort;
   compiler: InstructionCompilerPort;
   runs: CaseRunPort;
+  connector: CaseDataConnectorPort;
+  sourceFactory: ConnectorSourceFactory;
 }): CaseHttpHandlers {
-  const { catalog, compiler, runs } = deps;
+  const { catalog, compiler, runs, connector, sourceFactory } = deps;
 
   return {
     async health() {
       return ok({
         ok: true,
         service: 'case-service',
-        message: 'Case HTTP facade (compile + run)',
+        message: 'Case HTTP facade (catalog + connector + run)',
+        connector: connector.getSourceInfo(),
       });
     },
 
@@ -85,7 +99,6 @@ export function createCaseHttpHandlers(deps: {
       try {
         const req = (body ?? {}) as CompileCaseHttpRequest;
         const definition = await catalog.getCaseDefinition(caseId);
-
         const items =
           req.stepOrder != null
             ? [
@@ -98,12 +111,105 @@ export function createCaseHttpHandlers(deps: {
             : compiler.compileAll(definition, {
                 promptOverrideByOrder: req.promptOverrideByOrder,
               });
-
-        const response: CompileCaseHttpResponse = {
-          caseId,
-          items,
-        };
+        const response: CompileCaseHttpResponse = { caseId, items };
         return ok(response);
+      } catch (error) {
+        return fromDomainError(error);
+      }
+    },
+
+    async connectorStatus() {
+      return ok({
+        connected: connector.isConnected(),
+        source: connector.getSourceInfo(),
+      });
+    },
+
+    async connectorConnect(body) {
+      try {
+        const req = (body ?? {}) as ConnectorConnectRequest;
+        const source = sourceFactory.create(req);
+        connector.connect(source);
+        return ok({
+          connected: true,
+          source: connector.getSourceInfo(),
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        return fail(400, { code: 'CONNECTOR_CONNECT_FAILED', message });
+      }
+    },
+
+    async connectorDisconnect() {
+      connector.disconnect();
+      return ok({ connected: false, source: null });
+    },
+
+    async connectorList(query) {
+      try {
+        const pathPrefix = query.path
+          ? query.path.split('/').map((s) => s.trim()).filter(Boolean)
+          : undefined;
+        const list = await connector.listCases({
+          q: query.q,
+          pathPrefix,
+        });
+        return ok(list);
+      } catch (error) {
+        return fromDomainError(error);
+      }
+    },
+
+    async connectorOutline(caseId) {
+      try {
+        return ok(await connector.getOutline(caseId));
+      } catch (error) {
+        return fromDomainError(error);
+      }
+    },
+
+    async connectorCase(caseId) {
+      try {
+        return ok(await connector.getCase(caseId));
+      } catch (error) {
+        return fromDomainError(error);
+      }
+    },
+
+    async connectorCompiled(caseId) {
+      try {
+        const bundle = await connector.getCompiled(caseId);
+        if (!bundle) return ok({ empty: true });
+        return ok(bundle);
+      } catch (error) {
+        return fromDomainError(error);
+      }
+    },
+
+    async connectorSyncCompiled(caseId, body) {
+      try {
+        const bundle = body as ConnectedCompiledBundle;
+        if (!bundle?.instructions?.length) {
+          return fail(400, {
+            code: 'INVALID_BUNDLE',
+            message: 'instructions required',
+          });
+        }
+        const synced: ConnectedCompiledBundle = {
+          ...bundle,
+          caseId: bundle.caseId || caseId,
+        };
+        await connector.syncCompiled(synced);
+        return ok(synced);
+      } catch (error) {
+        return fromDomainError(error);
+      }
+    },
+
+    async connectorCompile(caseId) {
+      try {
+        const bundle = await connector.compileCase(caseId);
+        return ok(bundle);
       } catch (error) {
         return fromDomainError(error);
       }

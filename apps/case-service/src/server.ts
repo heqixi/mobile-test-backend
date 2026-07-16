@@ -1,11 +1,12 @@
 /**
  * @module @mtp/case-service/server
  *
- * 组装层：路由表 + dispatch（含 :param 匹配）。
+ * 组装层：路由表 + dispatch。
  */
 
 import type {
   CaseCatalogPort,
+  CaseDataConnectorPort,
   CaseRunPort,
   InstructionCompilerPort,
 } from '@mtp/domain-case';
@@ -15,6 +16,7 @@ import {
   type CaseHttpHandlers,
 } from './api/case-http.js';
 import type { HttpResult } from './api/http-kit.js';
+import type { ConnectorSourceFactory } from './connector/source-factory.js';
 import { createCaseHttpHandlers } from './handlers/case-handlers.js';
 
 export type HttpMethod = 'GET' | 'POST';
@@ -27,12 +29,42 @@ export interface RouteDescriptor {
 
 export const caseServiceRouteTable: RouteDescriptor[] = [
   { method: 'GET', path: CaseHttpRoutes.health, summary: 'Case 服务健康' },
-  { method: 'GET', path: CaseHttpRoutes.listCases, summary: '用例摘要列表' },
-  { method: 'GET', path: CaseHttpRoutes.getCase, summary: '用例完整定义' },
+  { method: 'GET', path: CaseHttpRoutes.listCases, summary: '内置 Catalog 列表' },
+  { method: 'GET', path: CaseHttpRoutes.getCase, summary: '内置 Catalog 用例' },
   {
     method: 'POST',
     path: CaseHttpRoutes.compileCase,
-    summary: 'compile_instruction（单步或整案）',
+    summary: '规则 compile（Catalog）',
+  },
+  {
+    method: 'POST',
+    path: CaseHttpRoutes.compileInstruction,
+    summary: 'LLM compile（待实现）',
+  },
+  { method: 'GET', path: CaseHttpRoutes.connectorStatus, summary: 'Connector 状态' },
+  { method: 'POST', path: CaseHttpRoutes.connectorConnect, summary: '连接用例库' },
+  {
+    method: 'POST',
+    path: CaseHttpRoutes.connectorDisconnect,
+    summary: '断开用例库',
+  },
+  { method: 'GET', path: CaseHttpRoutes.connectorList, summary: '外部用例列表' },
+  { method: 'GET', path: CaseHttpRoutes.connectorOutline, summary: '用例大纲' },
+  { method: 'GET', path: CaseHttpRoutes.connectorCase, summary: '用例详情' },
+  {
+    method: 'GET',
+    path: CaseHttpRoutes.connectorCompiled,
+    summary: '已编译 Instruction',
+  },
+  {
+    method: 'POST',
+    path: CaseHttpRoutes.connectorSyncCompiled,
+    summary: '回写编译产物',
+  },
+  {
+    method: 'POST',
+    path: CaseHttpRoutes.connectorCompile,
+    summary: '业务切步 + LLM 编译',
   },
   { method: 'POST', path: CaseHttpRoutes.startRun, summary: '创建 CaseRun' },
   { method: 'GET', path: CaseHttpRoutes.getRun, summary: '查询 CaseRun' },
@@ -67,13 +99,20 @@ export interface CaseHttpApi {
   port: number;
   routes: RouteDescriptor[];
   handlers: CaseHttpHandlers;
-  dispatch(method: string, path: string, body: unknown): Promise<HttpResult | null>;
+  dispatch(
+    method: string,
+    path: string,
+    body: unknown,
+    query?: URLSearchParams,
+  ): Promise<HttpResult | null>;
 }
 
 export function createCaseHttpApi(deps: {
   catalog: CaseCatalogPort;
   compiler: InstructionCompilerPort;
   runs: CaseRunPort;
+  connector: CaseDataConnectorPort;
+  sourceFactory: ConnectorSourceFactory;
 }): CaseHttpApi {
   const handlers = createCaseHttpHandlers(deps);
 
@@ -81,8 +120,10 @@ export function createCaseHttpApi(deps: {
     method: string,
     path: string,
     body: unknown,
+    query?: URLSearchParams,
   ): Promise<HttpResult | null> {
     const m = method.toUpperCase();
+    const q = query ?? new URLSearchParams();
 
     if (m === 'GET' && path === CaseHttpRoutes.health) {
       return handlers.health();
@@ -92,6 +133,30 @@ export function createCaseHttpApi(deps: {
     }
     if (m === 'POST' && path === CaseHttpRoutes.startRun) {
       return handlers.startRun(body);
+    }
+    if (m === 'POST' && path === CaseHttpRoutes.compileInstruction) {
+      return {
+        status: 501,
+        body: {
+          code: 'NOT_IMPLEMENTED',
+          message: 'LlmInstructionCompilerPort not wired yet',
+        },
+      };
+    }
+    if (m === 'GET' && path === CaseHttpRoutes.connectorStatus) {
+      return handlers.connectorStatus();
+    }
+    if (m === 'POST' && path === CaseHttpRoutes.connectorConnect) {
+      return handlers.connectorConnect(body);
+    }
+    if (m === 'POST' && path === CaseHttpRoutes.connectorDisconnect) {
+      return handlers.connectorDisconnect();
+    }
+    if (m === 'GET' && path === CaseHttpRoutes.connectorList) {
+      return handlers.connectorList({
+        q: q.get('q') ?? undefined,
+        path: q.get('path') ?? undefined,
+      });
     }
 
     {
@@ -104,6 +169,33 @@ export function createCaseHttpApi(deps: {
       const params = matchRoute(CaseHttpRoutes.getCase, path);
       if (m === 'GET' && params?.caseId) {
         return handlers.getCase(params.caseId);
+      }
+    }
+    {
+      const params = matchRoute(CaseHttpRoutes.connectorOutline, path);
+      if (m === 'GET' && params?.caseId) {
+        return handlers.connectorOutline(params.caseId);
+      }
+    }
+    {
+      const params = matchRoute(CaseHttpRoutes.connectorCompile, path);
+      if (m === 'POST' && params?.caseId) {
+        return handlers.connectorCompile(params.caseId);
+      }
+    }
+    {
+      const params = matchRoute(CaseHttpRoutes.connectorCompiled, path);
+      if (m === 'GET' && params?.caseId) {
+        return handlers.connectorCompiled(params.caseId);
+      }
+      if (m === 'POST' && params?.caseId) {
+        return handlers.connectorSyncCompiled(params.caseId, body);
+      }
+    }
+    {
+      const params = matchRoute(CaseHttpRoutes.connectorCase, path);
+      if (m === 'GET' && params?.caseId) {
+        return handlers.connectorCase(params.caseId);
       }
     }
     {
