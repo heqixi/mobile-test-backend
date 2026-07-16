@@ -39,4 +39,17 @@ npm run executor:serve
 
 ## Agent / Case
 
-仍为契约骨架；不影响 Executor 预览与对话。
+- Agent：`:4100` Instruction Loop（OpenCode + Midscene act_nl + SSE）
+- Case：`:4102` CaseRun 游标 / 账本；规则 compile；**DataConnector** 代理远端用例库
+- Cowork 用例库：`:4103` 独立业务服务（`business/cowork-csv`）
+
+```bash
+npm run cowork-library:serve   # :4103
+npm run case:serve             # :4102，默认连接 http://127.0.0.1:4103
+npm run agent:serve            # :4100
+```
+
+数据源格式由**业务 Adapter** 在独立进程处理；`case-service` 经 `createRemoteCaseDataSource({ baseUrl })` 连接，不内嵌 CSV。  
+详见 [`docs/case-llm-instruction-compile.md`](./docs/case-llm-instruction-compile.md)。
+
+设计总览：`vitest-all-platforms-demo/docs/architecture-domain-design.md`。
