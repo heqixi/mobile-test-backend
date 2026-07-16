@@ -47,6 +47,8 @@ export interface MidsceneExecutorDeps {
   appPackage?: string;
   sidecar: EmbeddedSidecarHandle | null;
   getScreenshotBase64: () => Promise<string>;
+  /** 中止当前 aiAct（含 Playground / freeform 共用同一 Agent） */
+  onAbortAct?: () => void;
   /** 释放底层 device / agent（不含 sidecar，由本类统一 close） */
   onDestroy?: () => Promise<void>;
 }
@@ -60,6 +62,7 @@ export class MidsceneExecutor implements ExecutorPort {
   private appPackage?: string;
   private sidecar: EmbeddedSidecarHandle | null;
   private readonly getScreenshotBase64: () => Promise<string>;
+  private readonly onAbortAct?: () => void;
   private readonly onDestroy?: () => Promise<void>;
   private destroyed = false;
 
@@ -69,6 +72,7 @@ export class MidsceneExecutor implements ExecutorPort {
     this.appPackage = deps.appPackage;
     this.sidecar = deps.sidecar;
     this.getScreenshotBase64 = deps.getScreenshotBase64;
+    this.onAbortAct = deps.onAbortAct;
     this.onDestroy = deps.onDestroy;
   }
 
@@ -257,7 +261,7 @@ export class MidsceneExecutor implements ExecutorPort {
   }
 
   async abort(): Promise<{ aborted: boolean }> {
-    // Midscene 暂无统一 cancel；占位成功
+    this.onAbortAct?.();
     return { aborted: true };
   }
 

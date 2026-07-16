@@ -29,6 +29,11 @@ export interface CreateAndroidExecutorOptions {
   skipLaunch?: boolean;
   /** Midscene aiActionContext */
   aiActionContext?: string;
+  /**
+   * Midscene aiAct 重规划上限（默认 3，可用 MIDSCENE_REPLANNING_CYCLE_LIMIT 覆盖）。
+   * 过小可能截断合法多步任务；过大易在「界面几乎不变」时空转。
+   */
+  replanningCycleLimit?: number;
   /** 截图节流间隔 */
   screenshotMinIntervalMs?: number;
 }
@@ -43,6 +48,18 @@ async function resolveDeviceId(preferred?: string): Promise<string> {
     );
   }
   return id;
+}
+
+/** 默认 3；非法 / 未设时回退默认值 */
+function resolveReplanningCycleLimit(option?: number): number {
+  const fromOpt =
+    typeof option === 'number' && Number.isFinite(option) ? option : undefined;
+  const fromEnv = Number(process.env.MIDSCENE_REPLANNING_CYCLE_LIMIT);
+  const raw =
+    fromOpt ??
+    (Number.isFinite(fromEnv) && fromEnv > 0 ? fromEnv : undefined) ??
+    3;
+  return Math.max(1, Math.floor(raw));
 }
 
 /**
@@ -78,12 +95,46 @@ export async function createAndroidExecutor(
     console.log('[domain-executor] skipLaunch=true — skip app launch');
   }
 
+  const replanningCycleLimit = resolveReplanningCycleLimit(
+    options.replanningCycleLimit,
+  );
+
   const agent = new AndroidAgent(device, {
     aiActionContext:
       options.aiActionContext?.trim() ||
       process.env.MIDSCENE_AI_ACTION_CONTEXT?.trim() ||
       'Follow instructions precisely using visible UI labels on screen.',
+    replanningCycleLimit,
   });
+  console.log(
+    `[domain-executor] Midscene replanningCycleLimit=${replanningCycleLimit}`,
+  );
+
+  /** Playground / freeform 共用同一 Agent；abort 时打断当前 aiAct */
+  let actAbort: AbortController | null = null;
+  const rawAiAct = agent.aiAct.bind(agent);
+  agent.aiAct = async (prompt, opt) => {
+    actAbort?.abort();
+    const ac = new AbortController();
+    actAbort = ac;
+    const external = opt?.abortSignal;
+    const onExternal = () => ac.abort(external?.reason);
+    if (external?.aborted) {
+      ac.abort(external.reason);
+    } else {
+      external?.addEventListener('abort', onExternal, { once: true });
+    }
+    try {
+      return await rawAiAct(prompt, { ...opt, abortSignal: ac.signal });
+    } finally {
+      external?.removeEventListener('abort', onExternal);
+      if (actAbort === ac) actAbort = null;
+    }
+  };
+  const abortCurrentAct = () => {
+    actAbort?.abort('aborted by user');
+    actAbort = null;
+  };
 
   const captureScreenshot = createScreenshotThrottle(
     options.screenshotMinIntervalMs ?? 2000,
@@ -108,7 +159,9 @@ export async function createAndroidExecutor(
       const shot = await captureScreenshot(deviceId);
       return shot.base64;
     },
+    onAbortAct: abortCurrentAct,
     onDestroy: async () => {
+      abortCurrentAct();
       await agent.destroy?.().catch(() => undefined);
       await device.destroy().catch(() => undefined);
     },
