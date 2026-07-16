@@ -38,7 +38,10 @@ export function createExecutorHttpServer(
         });
         return;
       }
-      const url = new URL(req.url);
+      const url = new URL(
+        req.url ?? '/',
+        `http://${req.headers.host ?? `${host}:${port}`}`,
+      );
       const needsBody = method === 'POST' || method === 'PUT' || method === 'PATCH';
       const body = needsBody ? await readJsonBody(req) : undefined;
 

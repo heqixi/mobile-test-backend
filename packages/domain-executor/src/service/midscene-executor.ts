@@ -208,6 +208,9 @@ export class MidsceneExecutor implements ExecutorPort {
       };
     }
     try {
+      // Agent 控机面板已通过 UniversalPlayground → /execute 推流。
+      // freeform 回退必须直调 agent.aiAct，避免再占 Playground currentTaskId
+      //（否则会出现 UI 无任务、却 409 Another task is already running）。
       const result = await this.agent.aiAct(prompt);
       return {
         ok: true,
