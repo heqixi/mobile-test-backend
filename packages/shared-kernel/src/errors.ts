@@ -16,14 +16,23 @@ export type AgentErrorCode =
   | 'INSTRUCTION_INVALID'
   | 'EPISODE_ALREADY_CLOSED';
 
-/** Case 域错误码（阶段一） */
+/** Case 域错误码 */
 export type CaseErrorCode =
   | 'CASE_NOT_FOUND'
   | 'RUN_NOT_FOUND'
   | 'RUN_NOT_RUNNING'
   | 'NO_MORE_STEPS'
   | 'STEP_NOT_FOUND'
-  | 'INVALID_STEP_CURSOR';
+  | 'INVALID_STEP_CURSOR'
+  /** LLM compile：Validator 未通过 */
+  | 'COMPILE_REJECTED'
+  /** LLM compile：调用/解析失败 */
+  | 'COMPILE_LLM_FAILED'
+  /** 保留：多次修复仍失败（可选实现） */
+  | 'COMPILE_REPAIR_EXHAUSTED'
+  /** DataConnector 未连接外部源 */
+  | 'CONNECTOR_NOT_CONNECTED';
+
 
 /** Executor 域错误码 */
 export type ExecutorErrorCode =
