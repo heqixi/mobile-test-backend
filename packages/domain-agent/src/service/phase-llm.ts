@@ -19,7 +19,6 @@ import {
 import {
   buildEpisodeSystemPrompt,
   buildPhaseUserPrompt,
-  expectationText,
 } from './system-prompt.js';
 
 export interface PhaseLlmDeps {
@@ -41,7 +40,7 @@ export async function askPhaseLlm(
 
   const userText = buildPhaseUserPrompt(
     phase,
-    expectationText(rec.episode.instruction),
+    rec.episode.instruction,
     lastToolFromEpisode(rec.episode),
   );
 

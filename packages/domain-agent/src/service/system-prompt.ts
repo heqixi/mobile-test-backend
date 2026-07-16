@@ -22,6 +22,34 @@ export function expectationText(instruction: Instruction): string {
     : JSON.stringify(instruction.expectation);
 }
 
+function preconditionsText(instruction: Instruction): string | undefined {
+  if (instruction.preconditions == null || instruction.preconditions === '') {
+    return undefined;
+  }
+  return typeof instruction.preconditions === 'string'
+    ? instruction.preconditions
+    : JSON.stringify(instruction.preconditions);
+}
+
+function hintsText(instruction: Instruction): string | undefined {
+  if (!instruction.hints?.length) return undefined;
+  return instruction.hints.map((h) => `- ${h}`).join('\n');
+}
+
+/** act / judge 每轮 user 消息中的 Instruction 上下文块 */
+function instructionContextBlock(instruction: Instruction): string {
+  const preconditions = preconditionsText(instruction);
+  const expectation = expectationText(instruction);
+  const hints = hintsText(instruction);
+  return [
+    preconditions ? `preconditions:\n${preconditions}` : undefined,
+    `expectation: ${expectation}`,
+    hints ? `hints:\n${hints}` : undefined,
+  ]
+    .filter(Boolean)
+    .join('\n');
+}
+
 /**
  * Midscene 自然语言操作约定（给 LLM 写 command 用）。
  * 实际执行走 Executor `/freeform/execute` → Midscene `aiAct`。
@@ -41,10 +69,41 @@ Good command examples:
 - "点击右上角关闭按钮"
 
 Rules for Midscene commands:
-1. Describe visible UI targets (labels, icons, positions), not code or coordinates unless necessary.
+1. Describe visible UI targets using exact labels/positions from hints when provided — do not guess similar-looking elements.
 2. One atomic action per command (prefer one click / one type / one swipe).
 3. Do NOT invent tools other than act_nl.
 4. Do NOT claim the expectation is satisfied in the act phase — that is judge's job.
+5. If hints mention blockers (popup, dialog, overlay, 遮挡, 关闭), clear them BEFORE clicking the main target.
+`.trim();
+
+/**
+ * act 相位决策顺序：先清障 → 验前提 → 再按 hints 操作。
+ * hints 中的「如有遮挡请关闭」类语句具有最高优先级。
+ */
+export const ACT_DECISION_CHECKLIST = `
+## Act-phase decision checklist (MANDATORY — follow in order)
+
+Before choosing command, inspect the screenshot and answer in evidence:
+
+1. **Blockers first (highest priority)**
+   - Scan for popups, dialogs, bottom sheets, permission prompts, or overlays that cover the target area.
+   - If ANY hint says 遮挡 / popup / 关闭 / dismiss / 先关闭 / 如有遮挡 — and you see such UI, your command MUST clear that blocker this round.
+   - Do NOT click the final target (e.g. 拍照 button) while a blocker still covers it.
+
+2. **Preconditions**
+   - Verify preconditions against the screenshot. If not met, one command to satisfy the missing precondition first.
+
+3. **Hints as the action script**
+   - hints are the preferred step-by-step script, not background trivia.
+   - Pick the earliest hint step that is still applicable on the current screen.
+   - Use the hint's exact element description (label, side, anchor) in command — e.g. "输入框右侧的【拍照】按钮", not a vague "底部圆形按钮".
+
+4. **Target disambiguation**
+   - Never click a visually similar but wrong control (e.g. shutter/capture vs album thumbnail vs send).
+   - In evidence, name what you see at the hinted location and why it matches the hint (or why you must clear a blocker first).
+
+5. **When to next="judge"**
+   - Only when blockers are gone, preconditions hold, and you believe the next tap is unnecessary because expectation may already be visible — or after the hinted action was just executed successfully (check last_tool).
 `.trim();
 
 /** 所有相位共用的 JSON / evidence 硬性要求 */
@@ -64,14 +123,8 @@ export const JSON_EVIDENCE_RULES = `
  */
 export function buildEpisodeSystemPrompt(instruction: Instruction): string {
   const expectation = expectationText(instruction);
-  const preconditions = instruction.preconditions
-    ? typeof instruction.preconditions === 'string'
-      ? instruction.preconditions
-      : JSON.stringify(instruction.preconditions)
-    : undefined;
-  const hints = instruction.hints?.length
-    ? instruction.hints.map((h) => `- ${h}`).join('\n')
-    : undefined;
+  const preconditions = preconditionsText(instruction);
+  const hints = hintsText(instruction);
 
   return [
     'You are a mobile UI test Agent running a two-phase loop: act → judge → act → …',
@@ -91,9 +144,11 @@ export function buildEpisodeSystemPrompt(instruction: Instruction): string {
     '- next="judge": ready to evaluate expectation against the screenshot — skip tool, go to judge',
     'JSON schema:',
     '{"next": "act" | "judge", "command"?: string, "evidence": string}',
-    '- evidence: REQUIRED. Cite screenshot facts justifying next/command.',
+    '- evidence: REQUIRED. Must cite: (1) blockers/popups visible? (2) preconditions met? (3) which hint step this command follows.',
     '- When next="act", command MUST be a non-empty Midscene-executable string (see act_nl guide).',
     '- When next="judge", omit command or use "".',
+    '',
+    ACT_DECISION_CHECKLIST,
     '',
     '### judge',
     'ONLY success criterion: whether Instruction expectation is satisfied on the current screenshot.',
@@ -124,13 +179,14 @@ export interface LastToolContext {
 }
 
 /**
- * 本轮 user prompt：相位 + expectation +（若有）上一轮 command/result；截图另作 file part。
+ * 本轮 user prompt：相位 + Instruction 上下文 +（若有）上一轮 command/result；截图另作 file part。
  */
 export function buildPhaseUserPrompt(
   phase: 'act' | 'judge',
-  expectation: string,
+  instruction: Instruction,
   lastTool?: LastToolContext,
 ): string {
+  const context = instructionContextBlock(instruction);
   const lastToolBlock = lastTool
     ? [
         'last_tool (Midscene act_nl just executed):',
@@ -152,7 +208,13 @@ export function buildPhaseUserPrompt(
     return [
       'Phase: act.',
       'Look at the attached screenshot. Return ONLY JSON: {"next":"act"|"judge","command"?,"evidence"} — evidence is REQUIRED.',
-      `Goal (Instruction expectation — do not judge yet): ${expectation}`,
+      '',
+      'Decision order: (1) clear blockers/popups if hints mention 遮挡/关闭 and screenshot shows them',
+      '(2) verify preconditions (3) execute the earliest still-applicable hint step — use exact labels from hints.',
+      'Do NOT skip to expectation or click a wrong similar-looking control.',
+      '',
+      'Current Instruction:',
+      context,
       lastToolBlock,
       'A device screenshot is attached as an image file part — use it as primary observation.',
     ]
@@ -163,9 +225,9 @@ export function buildPhaseUserPrompt(
   return [
     'Phase: judge.',
     'Look at the attached screenshot. Return ONLY JSON: {"satisfied","reason","continue?","evidence"} — evidence is REQUIRED.',
-    'The ONLY success criterion is the Instruction expectation below. Ignore any other goals.',
-    `expectation: ${expectation}`,
-    'Set satisfied=true only if the screenshot clearly shows this expectation is met.',
+    'The ONLY success criterion is expectation below. preconditions and hints are context only.',
+    context,
+    'Set satisfied=true only if the screenshot clearly shows expectation is met.',
     lastToolBlock,
     'A device screenshot is attached as an image file part — use it as primary observation.',
   ]
