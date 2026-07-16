@@ -12,7 +12,9 @@
     "executor:serve": "npm run start -w @mtp/executor-service",
     "executor:dev": "npm run dev -w @mtp/executor-service",
     "case:serve": "npm run start -w @mtp/case-service",
-    "case:dev": "npm run dev -w @mtp/case-service"
+    "case:dev": "npm run dev -w @mtp/case-service",
+    "agent:serve": "npm run start -w @mtp/agent-service",
+    "agent:dev": "npm run dev -w @mtp/agent-service"
   },
   "devDependencies": {
     "tsx": "^4.19.4",

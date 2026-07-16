@@ -8,8 +8,7 @@
   },
   "references": [
     { "path": "../../packages/shared-kernel" },
-    { "path": "../../packages/domain-agent" },
-    { "path": "../../packages/domain-case" }
+    { "path": "../../packages/domain-agent" }
   ],
   "include": ["src"]
 }

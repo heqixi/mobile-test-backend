@@ -1,159 +1,248 @@
 /**
  * @module @mtp/agent-service/server
  *
- * Agent 进程（:4100）路由注册表。
- * 仅声明「有哪些 API」；不启动 HTTP server、不实现业务。
+ * 组装层：路由表 + dispatch（含 :param 匹配）。
  */
 
+import type { AgentPort, OpenCodeHttpClient } from '@mtp/domain-agent';
 import {
+  AGENT_SERVICE_PORT,
   AgentHttpRoutes,
-  agentHttpHandlersStub,
   type AgentHttpHandlers,
 } from './api/agent-http.js';
-import {
-  CaseHttpRoutes,
-  caseHttpHandlersStub,
-  type CaseHttpHandlers,
-} from './api/case-http.js';
-import { AGENT_SERVICE_PORT } from './api/agent-http.js';
+import type { HttpResult } from './api/http-kit.js';
+import { createAgentHttpHandlers } from './handlers/agent-handlers.js';
+import type { PlaygroundRunHub } from './sse/playground-run-hub.js';
 
-/** HTTP 方法 */
-export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
+export type HttpMethod = 'GET' | 'POST';
 
-/**
- * 单条路由描述（骨架用）。
- * 实现阶段可映射到 Express/Fastify。
- */
 export interface RouteDescriptor {
   method: HttpMethod;
   path: string;
-  /**
-   * 领域归属：agent | case。
-   * 同进程部署时仍需代码分域。
-   */
-  domain: 'agent' | 'case';
-  /** 简要说明 */
   summary: string;
 }
 
-/**
- * Agent 进程完整路由表（含同进程挂载的 Case API）。
- */
 export const agentServiceRouteTable: RouteDescriptor[] = [
-  // Agent
+  {
+    method: 'GET',
+    path: AgentHttpRoutes.healthRoot,
+    summary: '根健康检查',
+  },
+  {
+    method: 'GET',
+    path: AgentHttpRoutes.health,
+    summary: 'Agent 健康（含 OpenCode）',
+  },
+  {
+    method: 'GET',
+    path: AgentHttpRoutes.events,
+    summary: 'Agent Loop SSE 事件流',
+  },
   {
     method: 'POST',
     path: AgentHttpRoutes.runInstruction,
-    domain: 'agent',
-    summary: '跑完 Instruction Loop，返回 InstructionResult',
+    summary: '跑 Instruction（OpenCode）',
   },
   {
     method: 'POST',
     path: AgentHttpRoutes.openEpisode,
-    domain: 'agent',
     summary: '开启 Episode',
   },
   {
     method: 'GET',
     path: AgentHttpRoutes.getEpisode,
-    domain: 'agent',
     summary: '查询 Episode',
   },
   {
     method: 'POST',
     path: AgentHttpRoutes.advance,
-    domain: 'agent',
     summary: '推进 Loop 一拍',
   },
   {
     method: 'POST',
     path: AgentHttpRoutes.askLlm,
-    domain: 'agent',
-    summary: '请求外部 LLM（act|judge）',
+    summary: '请求 LLM（act|judge）',
   },
   {
     method: 'POST',
     path: AgentHttpRoutes.dispatchTools,
-    domain: 'agent',
-    summary: '按名派发 tool_calls 到 Executor',
+    summary: '派发 tool_calls',
   },
   {
     method: 'POST',
     path: AgentHttpRoutes.ingest,
-    domain: 'agent',
-    summary: '注入观察 payload',
+    summary: '注入观察',
   },
   {
     method: 'POST',
     path: AgentHttpRoutes.closeEpisode,
-    domain: 'agent',
     summary: '关闭 Episode',
   },
   {
-    method: 'GET',
-    path: AgentHttpRoutes.health,
-    domain: 'agent',
-    summary: 'Agent 健康检查',
-  },
-  // Case（同进程分域）
-  {
-    method: 'GET',
-    path: CaseHttpRoutes.listCases,
-    domain: 'case',
-    summary: '用例摘要列表（只读）',
+    method: 'POST',
+    path: AgentHttpRoutes.abortEpisode,
+    summary: '中止 Episode',
   },
   {
     method: 'POST',
-    path: CaseHttpRoutes.startRun,
-    domain: 'case',
-    summary: '创建 CaseRun',
-  },
-  {
-    method: 'GET',
-    path: CaseHttpRoutes.getRun,
-    domain: 'case',
-    summary: '查询 CaseRun',
+    path: AgentHttpRoutes.abort,
+    summary: '中止 Agent（episodeId 或 streamId）',
   },
   {
     method: 'POST',
-    path: CaseHttpRoutes.stepNext,
-    domain: 'case',
-    summary: 'compile → run_instruction → 记账推进游标',
+    path: AgentHttpRoutes.playgroundRunAck,
+    summary: '前端认领 Playground act_nl 执行',
   },
   {
     method: 'POST',
-    path: CaseHttpRoutes.stepRetry,
-    domain: 'case',
-    summary: '重跑当前失败步',
+    path: AgentHttpRoutes.playgroundRunResult,
+    summary: '前端回报 Playground act_nl 结果',
   },
   {
     method: 'POST',
-    path: CaseHttpRoutes.stepSkip,
-    domain: 'case',
-    summary: '跳过并 advance',
+    path: AgentHttpRoutes.openCodeCreateSession,
+    summary: 'OpenCode 创建 session',
   },
   {
     method: 'POST',
-    path: CaseHttpRoutes.abortRun,
-    domain: 'case',
-    summary: '中止 CaseRun',
+    path: AgentHttpRoutes.openCodePostMessage,
+    summary: 'OpenCode POST message',
   },
 ];
 
-/**
- * Agent 进程骨架配置。
- * handlers 当前为 stub，全部抛 NOT_IMPLEMENTED。
- */
-export interface AgentServiceSkeleton {
-  port: number;
-  routes: RouteDescriptor[];
-  agentHandlers: AgentHttpHandlers;
-  caseHandlers: CaseHttpHandlers;
+export function matchRoute(
+  pattern: string,
+  path: string,
+): Record<string, string> | null {
+  const patternParts = pattern.split('/').filter(Boolean);
+  const pathParts = path.split('/').filter(Boolean);
+  if (patternParts.length !== pathParts.length) return null;
+
+  const params: Record<string, string> = {};
+  for (let i = 0; i < patternParts.length; i++) {
+    const pp = patternParts[i]!;
+    const actual = pathParts[i]!;
+    if (pp.startsWith(':')) {
+      params[pp.slice(1)] = decodeURIComponent(actual);
+    } else if (pp !== actual) {
+      return null;
+    }
+  }
+  return params;
 }
 
-export const agentServiceSkeleton: AgentServiceSkeleton = {
-  port: AGENT_SERVICE_PORT,
-  routes: agentServiceRouteTable,
-  agentHandlers: agentHttpHandlersStub,
-  caseHandlers: caseHttpHandlersStub,
-};
+export interface AgentHttpApi {
+  port: number;
+  routes: RouteDescriptor[];
+  handlers: AgentHttpHandlers;
+  dispatch(
+    method: string,
+    path: string,
+    body: unknown,
+  ): Promise<HttpResult | null>;
+}
+
+export function createAgentHttpApi(deps: {
+  agent: AgentPort;
+  openCode: OpenCodeHttpClient;
+  playgroundRuns?: PlaygroundRunHub;
+}): AgentHttpApi {
+  const handlers = createAgentHttpHandlers(deps);
+
+  async function dispatch(
+    method: string,
+    path: string,
+    body: unknown,
+  ): Promise<HttpResult | null> {
+    const m = method.toUpperCase();
+
+    if (
+      m === 'GET' &&
+      (path === AgentHttpRoutes.health || path === AgentHttpRoutes.healthRoot)
+    ) {
+      return handlers.health();
+    }
+    if (m === 'POST' && path === AgentHttpRoutes.runInstruction) {
+      return handlers.runInstruction(body as never);
+    }
+    if (m === 'POST' && path === AgentHttpRoutes.abort) {
+      return handlers.abort(body as never);
+    }
+    if (m === 'POST' && path === AgentHttpRoutes.openEpisode) {
+      return handlers.openEpisode(body as never);
+    }
+    if (m === 'POST' && path === AgentHttpRoutes.openCodeCreateSession) {
+      return handlers.openCodeCreateSession(body as never);
+    }
+
+    {
+      const params = matchRoute(AgentHttpRoutes.getEpisode, path);
+      if (m === 'GET' && params?.id) {
+        return handlers.getEpisode(params.id);
+      }
+    }
+    {
+      const params = matchRoute(AgentHttpRoutes.advance, path);
+      if (m === 'POST' && params?.id) {
+        return handlers.advance(params.id);
+      }
+    }
+    {
+      const params = matchRoute(AgentHttpRoutes.askLlm, path);
+      if (m === 'POST' && params?.id) {
+        return handlers.askLlm(params.id, body as never);
+      }
+    }
+    {
+      const params = matchRoute(AgentHttpRoutes.dispatchTools, path);
+      if (m === 'POST' && params?.id) {
+        return handlers.dispatchTools(params.id, body as never);
+      }
+    }
+    {
+      const params = matchRoute(AgentHttpRoutes.ingest, path);
+      if (m === 'POST' && params?.id) {
+        return handlers.ingest(params.id, body as never);
+      }
+    }
+    {
+      const params = matchRoute(AgentHttpRoutes.closeEpisode, path);
+      if (m === 'POST' && params?.id) {
+        return handlers.closeEpisode(params.id);
+      }
+    }
+    {
+      const params = matchRoute(AgentHttpRoutes.abortEpisode, path);
+      if (m === 'POST' && params?.id) {
+        return handlers.abortEpisode(params.id);
+      }
+    }
+    {
+      const params = matchRoute(AgentHttpRoutes.openCodePostMessage, path);
+      if (m === 'POST' && params?.id) {
+        return handlers.openCodePostMessage(params.id, body as never);
+      }
+    }
+    {
+      const params = matchRoute(AgentHttpRoutes.playgroundRunAck, path);
+      if (m === 'POST' && params?.requestId) {
+        return handlers.playgroundRunAck(params.requestId);
+      }
+    }
+    {
+      const params = matchRoute(AgentHttpRoutes.playgroundRunResult, path);
+      if (m === 'POST' && params?.requestId) {
+        return handlers.playgroundRunResult(params.requestId, body as never);
+      }
+    }
+
+    return null;
+  }
+
+  return {
+    port: AGENT_SERVICE_PORT,
+    routes: agentServiceRouteTable,
+    handlers,
+    dispatch,
+  };
+}
