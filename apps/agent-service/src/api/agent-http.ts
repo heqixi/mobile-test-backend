@@ -2,14 +2,8 @@
  * @module @mtp/agent-service/api/agent-http
  *
  * Agent HTTP 契约（architecture §7.4）。
- * 建议进程端口：`:4100`，前缀 `/api/agent/*`。
- *
- * 本文件仅定义：
- * - 路由表
- * - 请求/响应 body 类型
- * - 未实现的 handler 桩
- *
- * **不含** Express/Fastify 实现。
+ * 进程端口：`:4100`，前缀 `/api/agent/*`。
+ * 执行后端：OpenCode Server（默认 :4096）。
  */
 
 import type {
@@ -20,7 +14,7 @@ import type {
   LlmPhase,
 } from '@mtp/domain-agent';
 import type { OpaqueJson, UUID } from '@mtp/shared-kernel';
-import { notImplemented } from './stub.js';
+import type { HttpResult } from './http-kit.js';
 
 /** Agent 服务建议监听端口 */
 export const AGENT_SERVICE_PORT = 4100;
@@ -29,126 +23,135 @@ export const AGENT_SERVICE_PORT = 4100;
  * Agent HTTP 路由路径常量。
  */
 export const AgentHttpRoutes = {
-  /** POST — 一次性跑完 Instruction Loop → InstructionResult */
+  /** POST — 一次性跑完 Instruction → InstructionResult（经 OpenCode） */
   runInstruction: '/api/agent/instructions/run',
-  /** POST — 开启 Episode（body: Instruction）→ Episode */
+  /** POST — 开启 Episode */
   openEpisode: '/api/agent/episodes',
   /** GET — 查询 Episode */
   getEpisode: '/api/agent/episodes/:id',
-  /** POST — 推进 Loop 一拍 → Episode */
+  /** POST — 推进 Loop 一拍 */
   advance: '/api/agent/episodes/:id/advance',
-  /** POST — 请求 LLM（act|judge）→ Episode */
+  /** POST — 请求 LLM（act|judge） */
   askLlm: '/api/agent/episodes/:id/ask-llm',
-  /** POST — 派发 tool_calls → Episode */
+  /** POST — 派发 tool_calls */
   dispatchTools: '/api/agent/episodes/:id/dispatch-tools',
-  /** POST — 注入观察 payload → Episode */
+  /** POST — 注入观察 payload */
   ingest: '/api/agent/episodes/:id/ingest',
-  /** POST — 关闭 Episode → Episode */
+  /** POST — 关闭 Episode */
   closeEpisode: '/api/agent/episodes/:id/close',
-  /** GET — 健康检查 */
+  /** POST — 中止 Episode（打断 runInstruction） */
+  abortEpisode: '/api/agent/episodes/:id/abort',
+  /** POST — 中止（body: episodeId | streamId） */
+  abort: '/api/agent/abort',
+  /** GET — 健康检查（含 OpenCode 探测） */
   health: '/api/agent/health',
+  /** GET — 根健康（同 health，便于探活） */
+  healthRoot: '/health',
+  /** GET — Agent Loop SSE 事件流 */
+  events: '/api/agent/events',
+  /** POST — 前端认领 Playground 执行 */
+  playgroundRunAck: '/api/agent/playground-runs/:requestId/ack',
+  /** POST — 前端回报 Playground 执行结果 */
+  playgroundRunResult: '/api/agent/playground-runs/:requestId/result',
+  /** POST — 直连 OpenCode：创建 session */
+  openCodeCreateSession: '/api/agent/opencode/sessions',
+  /** POST — 直连 OpenCode：向 session 发消息（parts / text） */
+  openCodePostMessage: '/api/agent/opencode/sessions/:id/messages',
 } as const;
 
 // ── Request / Response bodies ──────────────────────────────────────────
 
 /**
  * POST `/api/agent/instructions/run`
- * body: Instruction 或 CreateInstructionInput
- * response: InstructionResult
+ * 可附带 streamId，写入 Instruction.metadata 供 SSE 过滤。
  */
-export type RunInstructionRequest = Instruction | CreateInstructionInput;
+export type RunInstructionRequest = (Instruction | CreateInstructionInput) & {
+  streamId?: string;
+};
 export type RunInstructionResponse = InstructionResult;
 
-/**
- * POST `/api/agent/episodes`
- * body: Instruction
- * response: Episode
- */
 export type OpenEpisodeRequest = Instruction | CreateInstructionInput;
 export type OpenEpisodeResponse = Episode;
 
-/** GET `/api/agent/episodes/:id` → Episode */
 export type GetEpisodeResponse = Episode;
-
-/** POST `/api/agent/episodes/:id/advance` → Episode */
 export type AdvanceEpisodeResponse = Episode;
 
-/**
- * POST `/api/agent/episodes/:id/ask-llm`
- */
 export interface AskLlmRequest {
-  /** act = planner；judge = 期望是否达成 */
   phase: LlmPhase;
 }
 export type AskLlmResponse = Episode;
 
-/**
- * POST `/api/agent/episodes/:id/dispatch-tools`
- */
 export interface DispatchToolsRequest {
-  /**
-   * 可选；缺省使用 Episode.lastAct.toolCalls。
-   * 形状与 ActTurn.toolCalls 一致，或 OpaqueJson 数组。
-   */
   tool_calls?: OpaqueJson;
 }
 export type DispatchToolsResponse = Episode;
 
-/**
- * POST `/api/agent/episodes/:id/ingest`
- */
 export interface IngestRequest {
-  /** 不透明观察载荷（如 sample 原始 JSON） */
   payload: OpaqueJson;
 }
 export type IngestResponse = Episode;
 
-/** POST `/api/agent/episodes/:id/close` → Episode */
 export type CloseEpisodeResponse = Episode;
 
-/**
- * GET `/api/agent/health`
- */
 export interface AgentHealthResponse {
   ok: boolean;
-  /** 外部 LLM 是否可达（实现时探测） */
+  service: 'agent-service';
   llmReachable?: boolean;
-  /** Executor AEP 是否可达（实现时探测） */
-  executorReachable?: boolean;
+  openCodeUrl?: string;
+  openCodeVersion?: string;
   message?: string;
 }
 
-// ── Handler stubs（未实现）─────────────────────────────────────────────
-
-/**
- * Agent HTTP handlers 接口。
- * 实现阶段绑定到 AgentPort；当前全部抛 NOT_IMPLEMENTED。
- */
-export interface AgentHttpHandlers {
-  runInstruction(body: RunInstructionRequest): Promise<RunInstructionResponse>;
-  openEpisode(body: OpenEpisodeRequest): Promise<OpenEpisodeResponse>;
-  getEpisode(id: UUID): Promise<GetEpisodeResponse>;
-  advance(id: UUID): Promise<AdvanceEpisodeResponse>;
-  askLlm(id: UUID, body: AskLlmRequest): Promise<AskLlmResponse>;
-  dispatchTools(
-    id: UUID,
-    body: DispatchToolsRequest,
-  ): Promise<DispatchToolsResponse>;
-  ingest(id: UUID, body: IngestRequest): Promise<IngestResponse>;
-  closeEpisode(id: UUID): Promise<CloseEpisodeResponse>;
-  health(): Promise<AgentHealthResponse>;
+/** POST `/api/agent/opencode/sessions` */
+export interface OpenCodeCreateSessionRequest {
+  title?: string;
+  parentID?: string;
 }
 
-/** 未实现的 Agent HTTP handlers */
-export const agentHttpHandlersStub: AgentHttpHandlers = {
-  runInstruction: async () =>
-    notImplemented(AgentHttpRoutes.runInstruction),
-  openEpisode: async () => notImplemented(AgentHttpRoutes.openEpisode),
-  getEpisode: async () => notImplemented(AgentHttpRoutes.getEpisode),
-  advance: async () => notImplemented(AgentHttpRoutes.advance),
-  askLlm: async () => notImplemented(AgentHttpRoutes.askLlm),
-  dispatchTools: async () => notImplemented(AgentHttpRoutes.dispatchTools),
-  ingest: async () => notImplemented(AgentHttpRoutes.ingest),
-  closeEpisode: async () => notImplemented(AgentHttpRoutes.closeEpisode),
-  health: async () => notImplemented(AgentHttpRoutes.health),
-};
+/**
+ * POST `/api/agent/opencode/sessions/:id/messages`
+ * 支持 `text` 便捷字段或完整 `parts`。
+ */
+export interface OpenCodePostMessageRequest {
+  text?: string;
+  parts?: Array<{ type: string; text?: string; [key: string]: unknown }>;
+  agent?: string;
+  system?: string;
+  noReply?: boolean;
+  model?: { providerID: string; modelID: string };
+}
+
+/** POST `/api/agent/abort` */
+export interface AbortAgentRequest {
+  episodeId?: UUID;
+  streamId?: string;
+}
+
+export interface AgentHttpHandlers {
+  runInstruction(body: RunInstructionRequest): Promise<HttpResult>;
+  openEpisode(body: OpenEpisodeRequest): Promise<HttpResult>;
+  getEpisode(id: UUID): Promise<HttpResult>;
+  advance(id: UUID): Promise<HttpResult>;
+  askLlm(id: UUID, body: AskLlmRequest): Promise<HttpResult>;
+  dispatchTools(id: UUID, body: DispatchToolsRequest): Promise<HttpResult>;
+  ingest(id: UUID, body: IngestRequest): Promise<HttpResult>;
+  closeEpisode(id: UUID): Promise<HttpResult>;
+  abortEpisode(id: UUID): Promise<HttpResult>;
+  abort(body: AbortAgentRequest): Promise<HttpResult>;
+  health(): Promise<HttpResult>;
+  openCodeCreateSession(body: OpenCodeCreateSessionRequest): Promise<HttpResult>;
+  openCodePostMessage(
+    id: string,
+    body: OpenCodePostMessageRequest,
+  ): Promise<HttpResult>;
+  playgroundRunAck(requestId: string): Promise<HttpResult>;
+  playgroundRunResult(
+    requestId: string,
+    body: {
+      ok: boolean;
+      durationMs?: number;
+      result?: unknown;
+      error?: string;
+    },
+  ): Promise<HttpResult>;
+}
