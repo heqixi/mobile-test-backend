@@ -15,18 +15,18 @@ import type { CaseCatalogPort } from '../ports/case-catalog-port.js';
 export const DEMO_CASES: CaseDefinition[] = [
   {
     caseId: 'demo-login-smoke',
-    title: '登录冒烟（演示）',
-    preconditions: 'App 已安装且可启动',
+    title: 'WPS App 打开测试',
+    preconditions: 'Wps App 已安装, 可以在手机桌面上找到并打开',
     steps: [
       {
         stepId: 'step-1',
         order: 1,
-        intent: '打开 App 并进入登录页',
+        intent: '打开手机桌面, 找到WPS Office App 并且点击',
       },
       {
         stepId: 'step-2',
         order: 2,
-        intent: '输入测试账号并点击登录',
+        intent: '打开 WPS App 并进入首页',
       },
       {
         stepId: 'step-3',
@@ -34,7 +34,7 @@ export const DEMO_CASES: CaseDefinition[] = [
         intent: '确认已进入首页',
       },
     ],
-    expected: ['登录成功后可见首页主内容'],
+    expected: ['可见首页主内容'],
     priority: 'P0',
     categories: ['smoke', 'demo'],
   },
