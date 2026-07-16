@@ -33,15 +33,16 @@ export interface AgentPort {
   runInstruction(instruction: Instruction): Promise<InstructionResult>;
 
   /**
-   * 推进 Loop 一拍：
-   * - 若需 act：askLlm(act) → 若有 tool_calls 则 dispatchTools
-   * - 若需 judge：askLlm(judge) → 写 JudgeTurn → 可能 completed
+   * 推进 Loop 一拍（act → judge）：
+   * - acting：askLlm(act) → next=act 则 dispatch；next=judge 则进入 judging
+   * - dispatching：freeform act_nl → judging
+   * - judging：askLlm(judge) → satisfied 则 completed，否则回到 acting
    */
   advance(episodeId: UUID): Promise<Episode>;
 
   /**
-   * 显式请求外部 LLM 一次（act 或 judge 相位）。
-   * 写入 ActTurn 或 JudgeTurn 到 Episode.turns。
+   * 显式请求外部 LLM 一次（act | judge）。
+   * 写入 ActTurn / JudgeTurn 到 Episode.turns。
    */
   askLlm(episodeId: UUID, phase: LlmPhase): Promise<Episode>;
 
@@ -61,6 +62,18 @@ export interface AgentPort {
 
   /** 结束 Episode（正常或中止） */
   closeEpisode(episodeId: UUID): Promise<Episode>;
+
+  /**
+   * 中止正在运行的 Episode（打断 runInstruction / advance 等待）。
+   * 已 completed/failed 的 Episode 原样返回。
+   */
+  abortEpisode(episodeId: UUID): Promise<Episode>;
+
+  /**
+   * 按 streamId 中止活跃 Episode（前端 Stop 常用）。
+   * 无匹配时返回 null。
+   */
+  abortByStreamId(streamId: string): Promise<Episode | null>;
 
   /** 查询 Episode 当前状态与 transcript */
   getEpisode(episodeId: UUID): Promise<Episode>;
