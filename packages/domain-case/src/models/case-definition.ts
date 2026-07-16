@@ -1,10 +1,11 @@
 /**
  * @module @mtp/domain-case/case-definition
  *
- * Case 域只读用例定义（阶段一）。
+ * Case 域只读用例定义（阶段一 Catalog / CaseRun）。
  * 来源可为 CSV loader 等；**运行中不可被 CaseRun 修改**。
  *
  * 阶段一 **不包含** CaseBinding、CaseContext、StateRegistry。
+ * 业务异构数据源 → 业务 Adapter → `CompileCaseInput` → LLM Compiler（见 llm-instruction-compiler-port）。
  */
 
 /**
