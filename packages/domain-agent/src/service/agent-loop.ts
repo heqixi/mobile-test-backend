@@ -60,6 +60,8 @@ export interface CreateAgentLoopOptions extends OpenCodeHttpOptions {
   executorOptions?: ExecutorHttpOptions;
   /** act→judge 最大轮次；默认 8 */
   maxRounds?: number;
+  /** 连续 judge 未满足（unsatisfied）上限；默认 3，连续达到后直接 failed 并中止 Midscene */
+  maxJudgeFailures?: number;
   onEvent?: AgentLoopEventListener;
   model?: { providerID: string; modelID: string };
   /**
@@ -86,6 +88,12 @@ export function createAgentLoop(
   const executor =
     options.executor ?? createExecutorHttpClient(options.executorOptions);
   const maxRounds = options.maxRounds ?? 8;
+  const maxJudgeFailures = (() => {
+    const raw =
+      options.maxJudgeFailures ??
+      Number(process.env.AGENT_MAX_JUDGE_FAILURES ?? 3);
+    return Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : 3;
+  })();
   const onEvent = options.onEvent;
   const openCodeModel = resolveOpenCodeModel(options.model);
   const runActNlViaPlayground = options.runActNlViaPlayground;
@@ -107,6 +115,45 @@ export function createAgentLoop(
     } catch {
       // ignore
     }
+  }
+
+  async function stopMidscene(rec: EpisodeRecord): Promise<void> {
+    const playgroundId = rec.activePlaygroundRequestId;
+    if (playgroundId) {
+      try {
+        cancelPlaygroundRun?.(playgroundId);
+      } catch {
+        // ignore
+      }
+      rec.activePlaygroundRequestId = undefined;
+    }
+    try {
+      await executor.abort('judge failure limit');
+    } catch {
+      // ignore
+    }
+  }
+
+  async function applyFail(
+    rec: EpisodeRecord,
+    reason: string,
+    stopDevice = false,
+  ): Promise<Episode> {
+    if (isTerminal(rec.episode.status)) {
+      return structuredClone(rec.episode);
+    }
+    rec.abortRequested = true;
+    rec.episode.status = 'failed';
+    touch(rec);
+    if (stopDevice) {
+      await stopMidscene(rec);
+    }
+    emit({
+      ...baseEvent(rec),
+      type: 'episode.failed',
+      reason,
+    });
+    return structuredClone(rec.episode);
   }
 
   function get(episodeId: UUID): EpisodeRecord {
@@ -286,6 +333,7 @@ export function createAgentLoop(
     });
 
     if (judge.satisfied) {
+      rec.episode.consecutiveJudgeFailures = 0;
       rec.episode.status = 'completed';
       emit({
         ...baseEvent(rec),
@@ -293,15 +341,23 @@ export function createAgentLoop(
         satisfied: true,
         reason: judge.reason,
       });
-    } else if (judge.continue !== false && round < maxRounds) {
-      rec.episode.status = 'acting';
     } else {
-      rec.episode.status = 'failed';
-      emit({
-        ...baseEvent(rec),
-        type: 'episode.failed',
-        reason: judge.reason,
-      });
+      const consecutiveFailures =
+        (rec.episode.consecutiveJudgeFailures ?? 0) + 1;
+      rec.episode.consecutiveJudgeFailures = consecutiveFailures;
+
+      if (consecutiveFailures >= maxJudgeFailures) {
+        return await applyFail(
+          rec,
+          `judge unsatisfied ${consecutiveFailures} consecutive times (limit ${maxJudgeFailures}): ${judge.reason}`,
+          true,
+        );
+      }
+      if (judge.continue !== false && round < maxRounds) {
+        rec.episode.status = 'acting';
+      } else {
+        return await applyFail(rec, judge.reason, true);
+      }
     }
     touch(rec);
     return structuredClone(rec.episode);
@@ -319,6 +375,7 @@ export function createAgentLoop(
         instruction,
         turns: [],
         round: 0,
+        consecutiveJudgeFailures: 0,
         createdAt: ts,
         updatedAt: ts,
       };

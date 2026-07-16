@@ -39,6 +39,8 @@ export interface Episode {
 
   /** 已完成的 act→judge 轮次计数 */
   round?: number;
+  /** 连续 judge 未满足次数（satisfied 时归零） */
+  consecutiveJudgeFailures?: number;
   createdAt: ISO8601;
   updatedAt: ISO8601;
 }
