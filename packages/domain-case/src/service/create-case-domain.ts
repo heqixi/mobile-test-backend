@@ -12,7 +12,7 @@ import type { CaseCatalogPort } from '../ports/case-catalog-port.js';
 import type { CaseRunPort } from '../ports/case-run-port.js';
 import type { InstructionCompilerPort } from '../ports/instruction-compiler-port.js';
 import { createCaseRunService } from './case-run-service.js';
-import { createInstructionCompiler } from './compile-instruction.js';
+import { createInstructionCompiler } from './simple-compiler.js';
 import {
   createInMemoryCatalog,
   DEMO_CASES,
@@ -36,6 +36,8 @@ export function createSatisfiedAgentStub(
     dispatchTools: unsupported as AgentPort['dispatchTools'],
     ingest: unsupported as AgentPort['ingest'],
     closeEpisode: unsupported as AgentPort['closeEpisode'],
+    abortEpisode: unsupported as AgentPort['abortEpisode'],
+    abortByStreamId: unsupported as AgentPort['abortByStreamId'],
     getEpisode: unsupported as AgentPort['getEpisode'],
     async runInstruction(
       instruction: Instruction,

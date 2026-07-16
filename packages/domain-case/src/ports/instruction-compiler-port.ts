@@ -1,17 +1,8 @@
 /**
  * @module @mtp/domain-case/ports/instruction-compiler-port
  *
- * `compile_instruction` 输入/输出与端口（阶段一最小规则）。
- *
- * ```ts
- * Instruction {
- *   expectation: step.intent,           // 或 promptOverride
- *   preconditions: definition.preconditions,
- *   metadata: { caseId, stepId, stepOrder },
- * }
- * ```
- *
- * 不读取 Binding / Context / Registry。
+ * 阶段一规则 compile：CaseDefinition 步 → Instruction（同步，无 LLM）。
+ * 与 `LlmInstructionCompilerPort`（LLM + Validator）并存；互不替代。
  */
 
 import type { Instruction } from '@mtp/domain-agent';
