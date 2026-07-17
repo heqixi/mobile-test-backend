@@ -27,7 +27,7 @@ export function sendJson(res: ServerResponse, status: number, body: unknown): vo
     'Content-Type': 'application/json; charset=utf-8',
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Headers': 'Content-Type, Accept',
     'Content-Length': Buffer.byteLength(payload),
   });
   res.end(payload);
@@ -37,7 +37,7 @@ export function corsPreflight(res: ServerResponse): void {
   res.writeHead(204, {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Headers': 'Content-Type, Accept',
   });
   res.end();
 }
