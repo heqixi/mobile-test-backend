@@ -35,3 +35,7 @@ coverage/
 # Misc
 *.pem
 *.tgz
+
+# Agent runtime artifacts (screenshots / visual evidence)
+apps/agent-service/runs/
+**/runs/visual-evidence/
