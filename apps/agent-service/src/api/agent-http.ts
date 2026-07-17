@@ -49,6 +49,8 @@ export const AgentHttpRoutes = {
   healthRoot: '/health',
   /** GET — Agent Loop SSE 事件流 */
   events: '/api/agent/events',
+  /** GET — Visual Evidence 落盘图（浏览器可直接 <img>） */
+  visualEvidenceFile: '/api/agent/visual-evidence/:file',
   /** POST — 前端认领 Playground 执行 */
   playgroundRunAck: '/api/agent/playground-runs/:requestId/ack',
   /** POST — 前端回报 Playground 执行结果 */

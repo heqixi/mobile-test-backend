@@ -6,7 +6,9 @@
 
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { randomUUID } from 'node:crypto';
+import { createReadStream, existsSync, statSync } from 'node:fs';
 import type { AgentPort, OpenCodeHttpClient } from '@mtp/domain-agent';
+import { resolveSafeVisualEvidencePath } from '@mtp/domain-agent';
 import { corsPreflight, readJsonBody, sendJson } from './api/http-kit.js';
 import { AgentHttpRoutes } from './api/agent-http.js';
 import { createAgentHttpApi } from './server.js';
@@ -70,16 +72,51 @@ export function createAgentHttpServer(
 
       const method = req.method ?? 'GET';
       const url = new URL(req.url ?? '/', `http://${req.headers.host ?? host}`);
+      const started = Date.now();
 
       if (method === 'GET' && url.pathname === AgentHttpRoutes.events) {
         const streamId = url.searchParams.get('streamId') ?? undefined;
+        console.log(
+          `[agent-service] SSE connect${streamId ? ` streamId=${streamId}` : ''}`,
+        );
         attachSse(req, res, deps.eventHub, streamId);
         return;
+      }
+
+      {
+        const prefix = '/api/agent/visual-evidence/';
+        if (method === 'GET' && url.pathname.startsWith(prefix)) {
+          const fileParam = decodeURIComponent(url.pathname.slice(prefix.length));
+          const abs = resolveSafeVisualEvidencePath(fileParam);
+          if (!abs || !existsSync(abs)) {
+            sendJson(res, 404, { error: 'visual evidence not found' });
+            return;
+          }
+          const st = statSync(abs);
+          res.writeHead(200, {
+            'Content-Type': 'image/png',
+            'Content-Length': st.size,
+            'Access-Control-Allow-Origin': '*',
+            'Cache-Control': 'private, max-age=3600',
+          });
+          createReadStream(abs).pipe(res);
+          return;
+        }
       }
 
       const needsBody =
         method === 'POST' || method === 'PUT' || method === 'PATCH';
       const body = needsBody ? await readJsonBody(req) : undefined;
+
+      if (
+        method === 'POST' &&
+        url.pathname === AgentHttpRoutes.runInstruction
+      ) {
+        const b = body as { instructionId?: string; streamId?: string };
+        console.log(
+          `[agent-service] RUN start instructionId=${b?.instructionId ?? '?'} streamId=${b?.streamId ?? '?'}`,
+        );
+      }
 
       const result = await api.dispatch(method, url.pathname, body ?? {});
       if (!result) {
@@ -90,9 +127,25 @@ export function createAgentHttpServer(
         return;
       }
 
+      if (
+        method === 'POST' &&
+        url.pathname === AgentHttpRoutes.runInstruction
+      ) {
+        const status =
+          result.body &&
+          typeof result.body === 'object' &&
+          'status' in result.body
+            ? String((result.body as { status?: string }).status)
+            : String(result.status);
+        console.log(
+          `[agent-service] RUN done ${status} (${Date.now() - started}ms)`,
+        );
+      }
+
       sendJson(res, result.status, result.body);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
+      console.error(`[agent-service] ${req.method} ${req.url}: ${message}`);
       sendJson(res, 500, { error: message });
     }
   });
