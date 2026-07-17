@@ -47,6 +47,7 @@ function toInstruction(
           : randomUUID(),
       expectation: body.expectation,
       preconditions: body.preconditions,
+      actions: body.actions,
       hints: body.hints,
       tools: body.tools,
       timeoutMs: body.timeoutMs,

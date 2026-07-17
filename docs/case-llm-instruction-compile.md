@@ -91,7 +91,8 @@ interface InstructionValidatorPort {
 质量约定（Validator 与 LLM prompt 共用）：
 
 - `expectation`：Judge 唯一、可截图核验的成功标准
-- `actions`：Midscene 可执行的原子意图 → 写入 `Instruction.hints`
+- `actions`：Midscene 可执行的原子意图 → 写入 `Instruction.actions`
+- `hints`：可选清障/补充提示 → 写入 `Instruction.hints`（不再与 actions 合并）
 - `preconditions`：开始前状态，非操作过程
 
 ## 3. 与阶段一规则 compile 的关系

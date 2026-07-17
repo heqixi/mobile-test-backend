@@ -48,10 +48,11 @@ const DEFAULT_SYSTEM_PROMPT = `你是移动端 UI 自动化测试的 Instruction
 
 硬性要求：
 1. actions 必须是非空字符串数组，至少 1 条；只覆盖「当前这一步」的操作，禁止把整案其它步骤写进来
-2. expectation 必须可观测、可判定，写本步完成后的界面结果，不要只复述操作动词
-3. preconditions 只描述开始前状态，不是操作过程
-4. 不要发明输入里未给出的步骤或结果
-5. 若输入给了「本步操作意图」原文，actions 应直接落实该意图（可拆成 1～3 条原子动作）`;
+2. expectation 必须可观测、可判定，写本步完成后的**界面结果/控件角色**，不要只复述操作动词
+3. expectation 禁止写死单一厂商/单一文案的按钮字；应写页面类型 + 控件角色（主确认、取消/关闭、重试等），必要时注明「文案因设备/语言可能不同」
+4. preconditions 只描述开始前状态，不是操作过程
+5. 不要发明输入里未给出的步骤或结果
+6. 若输入给了「本步操作意图」原文，actions 应直接落实该意图（可拆成 1～3 条原子动作）`;
 
 function resolveOpenCodeModel(
   explicit?: { providerID: string; modelID: string },
@@ -129,15 +130,18 @@ export function draftToInstruction(
   draft: InstructionDraft,
   metadata?: CompileCaseInput['metadata'],
 ): Instruction {
-  const hints = [
-    ...(draft.actions ?? []),
-    ...(draft.hints ?? []),
-  ].filter((h) => h.trim());
+  const actions = (draft.actions ?? [])
+    .map((a) => a.trim())
+    .filter(Boolean);
+  const hints = (draft.hints ?? [])
+    .map((h) => h.trim())
+    .filter(Boolean);
 
   return {
     instructionId: randomUUID(),
     expectation: draft.expectation.trim(),
     preconditions: draft.preconditions.trim() || undefined,
+    actions: actions.length ? actions : undefined,
     hints: hints.length ? hints : undefined,
     timeoutMs: draft.timeoutMs,
     metadata: {

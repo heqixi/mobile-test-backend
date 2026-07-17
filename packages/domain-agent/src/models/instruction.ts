@@ -39,8 +39,14 @@ export interface Instruction {
   preconditions?: string | OpaqueJson;
 
   /**
-   * 给 LLM 的附加提示列表。
-   * 例：「先 sample 再判断」。非 Case step 实体。
+   * 面向 Midscene 的原子操作意图（一等公民）。
+   * 由 LLM compile 的 `actions` 原样落入；act 相位优先按此执行。
+   */
+  actions?: string[];
+
+  /**
+   * 给 LLM 的附加提示列表（清障、等待、补充说明等）。
+   * **不是**主操作脚本；主操作见 `actions`。
    */
   hints?: string[];
 
@@ -69,6 +75,7 @@ export interface CreateInstructionInput {
   instructionId?: UUID;
   expectation: string | OpaqueJson;
   preconditions?: string | OpaqueJson;
+  actions?: string[];
   hints?: string[];
   tools?: OpaqueJson;
   timeoutMs?: number;

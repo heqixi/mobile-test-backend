@@ -50,7 +50,7 @@ export interface CaseDefinition {
 
   /**
    * 用例级验收描述列表。
-   * 阶段一可选编入 Instruction.hints；不参与 Agent 本地 judge。
+   * 阶段一 simple-compiler 可选编入 Instruction.hints；不参与 Agent 本地 judge。
    */
   expected: string[];
 

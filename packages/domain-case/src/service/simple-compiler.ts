@@ -40,6 +40,7 @@ export function compileInstruction(
     instructionId: randomUUID(),
     expectation,
     preconditions: request.definition.preconditions,
+    actions: [step.intent],
     hints: request.definition.expected?.length
       ? [...request.definition.expected]
       : undefined,
