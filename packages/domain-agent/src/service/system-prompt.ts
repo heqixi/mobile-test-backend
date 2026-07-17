@@ -4,17 +4,25 @@
  * Episode Session 首轮注入的统一 SystemPrompt。
  * 后续相位只发本轮 user prompt + 截图。
  *
- * OpenCode 同一 Session 会自动带上历史对话。
- * 上一轮 Midscene 的 command + tool_result 写入**下一轮 user 消息**（不另发 noReply）。
- *
- * Loop：act → (dispatch act_nl) → judge → act → …
+ * Loop：precondition → act → (dispatch) → judge → precondition → …
  *
  * **硬性约定**：每一相位都必须返回 **合法 JSON**，且必须包含
  * 非空字符串字段 `evidence`（基于截图的决策依据）。
- * **Judge**：Instruction.expectation 是判定成功的唯一标准。
+ * **Judge**：Instruction.expectation 是判定成功的唯一标准；失败须说明 precondition 是否仍满足。
  */
 
 import type { Instruction } from '../models/instruction.js';
+import type { LlmPhase } from '../ports/external-llm-port.js';
+import {
+  readExpectationEvidence,
+  readPreconditionEvidence,
+  resolvePreconditionEvidence,
+  resolveReferenceEvidence,
+} from '../models/visual-evidence.js';
+import {
+  formatExpectationGoldenHint,
+  formatPreconditionGoldenHint,
+} from './evidence-compiler.js';
 
 export function expectationText(instruction: Instruction): string {
   return typeof instruction.expectation === 'string'
@@ -22,7 +30,9 @@ export function expectationText(instruction: Instruction): string {
     : JSON.stringify(instruction.expectation);
 }
 
-function preconditionsText(instruction: Instruction): string | undefined {
+export function preconditionsText(
+  instruction: Instruction,
+): string | undefined {
   if (instruction.preconditions == null || instruction.preconditions === '') {
     return undefined;
   }
@@ -31,29 +41,31 @@ function preconditionsText(instruction: Instruction): string | undefined {
     : JSON.stringify(instruction.preconditions);
 }
 
-function hintsText(instruction: Instruction): string | undefined {
-  if (!instruction.hints?.length) return undefined;
-  return instruction.hints.map((h) => `- ${h}`).join('\n');
+export function hasPreconditions(instruction: Instruction): boolean {
+  return Boolean(preconditionsText(instruction)?.trim());
 }
 
-/** act / judge 每轮 user 消息中的 Instruction 上下文块 */
-function instructionContextBlock(instruction: Instruction): string {
+function listText(items: string[] | undefined): string | undefined {
+  if (!items?.length) return undefined;
+  return items.map((h) => `- ${h}`).join('\n');
+}
+
+/** 基础 Instruction 字段（不含 Golden 大段，Golden 按相位注入） */
+function instructionCoreBlock(instruction: Instruction): string {
   const preconditions = preconditionsText(instruction);
   const expectation = expectationText(instruction);
-  const hints = hintsText(instruction);
+  const actions = listText(instruction.actions);
+  const hints = listText(instruction.hints);
   return [
     preconditions ? `preconditions:\n${preconditions}` : undefined,
     `expectation: ${expectation}`,
+    actions ? `actions:\n${actions}` : undefined,
     hints ? `hints:\n${hints}` : undefined,
   ]
     .filter(Boolean)
     .join('\n');
 }
 
-/**
- * Midscene 自然语言操作约定（给 LLM 写 command 用）。
- * 实际执行走 Executor `/freeform/execute` → Midscene `aiAct`。
- */
 export const MIDSCENE_ACT_NL_GUIDE = `
 ## Only tool: act_nl (Midscene natural-language UI action)
 
@@ -61,52 +73,41 @@ You have exactly ONE tool for acting on the device:
 - name: act_nl
 - argument: a single Chinese/English natural-language command that Midscene can execute on the current Android screen.
 
-Good command examples:
-- "点击屏幕上的 WPS Office 图标"
-- "点击底部「文档」Tab"
-- "在搜索框输入 hello 并回车"
-- "向上滑动一屏"
-- "点击右上角关闭按钮"
-
 Rules for Midscene commands:
-1. Describe visible UI targets using exact labels/positions from hints when provided — do not guess similar-looking elements.
+1. Describe visible UI targets using exact labels/positions from actions (or hints) when provided.
 2. One atomic action per command (prefer one click / one type / one swipe).
 3. Do NOT invent tools other than act_nl.
-4. Do NOT claim the expectation is satisfied in the act phase — that is judge's job.
-5. If hints mention blockers (popup, dialog, overlay, 遮挡, 关闭), clear them BEFORE clicking the main target.
+4. Do NOT claim the expectation is satisfied outside the judge phase.
+5. If hints mention blockers (popup, dialog, overlay, 遮挡, 关闭), clear them BEFORE the main action.
 `.trim();
 
-/**
- * act 相位决策顺序：先清障 → 验前提 → 再按 hints 操作。
- * hints 中的「如有遮挡请关闭」类语句具有最高优先级。
- */
 export const ACT_DECISION_CHECKLIST = `
 ## Act-phase decision checklist (MANDATORY — follow in order)
 
-Before choosing command, inspect the screenshot and answer in evidence:
+Preconditions were already verified in the precondition phase. Do NOT re-check or restore preconditions here.
 
-1. **Blockers first (highest priority)**
-   - Scan for popups, dialogs, bottom sheets, permission prompts, or overlays that cover the target area.
-   - If ANY hint says 遮挡 / popup / 关闭 / dismiss / 先关闭 / 如有遮挡 — and you see such UI, your command MUST clear that blocker this round.
-   - Do NOT click the final target (e.g. 拍照 button) while a blocker still covers it.
+1. **Blockers first**
+   - Clear popups/overlays that cover the action target when hints mention 遮挡/关闭.
 
-2. **Preconditions**
-   - Verify preconditions against the screenshot. If not met, one command to satisfy the missing precondition first.
+2. **Expectation Golden (when attached)**
+   - Compare CURRENT vs Expectation Golden and close the gap toward the expected outcome.
 
-3. **Hints as the action script**
-   - hints are the preferred step-by-step script, not background trivia.
-   - Pick the earliest hint step that is still applicable on the current screen.
-   - Use the hint's exact element description (label, side, anchor) in command — e.g. "输入框右侧的【拍照】按钮", not a vague "底部圆形按钮".
+3. **Actions as the script**
+   - Execute the earliest still-applicable action; use exact labels from actions.
+   - If actions are empty, fall back to hints.
 
-4. **Target disambiguation**
-   - Never click a visually similar but wrong control (e.g. shutter/capture vs album thumbnail vs send).
-   - In evidence, name what you see at the hinted location and why it matches the hint (or why you must clear a blocker first).
-
-5. **When to next="judge"**
-   - Only when blockers are gone, preconditions hold, and you believe the next tap is unnecessary because expectation may already be visible — or after the hinted action was just executed successfully (check last_tool).
+4. **When to next="judge"**
+   - Only when blockers are gone and you believe expectation may already be visible, or after the planned action just ran (see last_tool).
 `.trim();
 
-/** 所有相位共用的 JSON / evidence 硬性要求 */
+export const JUDGE_SEMANTIC_MATCH = `
+## Judge semantic matching (MANDATORY)
+
+Judge by **UI role + screen outcome**, NOT exact string equality of control labels.
+If CURRENT shows the same screen type and control roles as the expectation, label/locale differences are OK.
+Fail only when the screen type is wrong or the required outcome/control role is clearly absent.
+`.trim();
+
 export const JSON_EVIDENCE_RULES = `
 ## Output format (MANDATORY for EVERY phase)
 
@@ -118,58 +119,65 @@ export const JSON_EVIDENCE_RULES = `
 `.trim();
 
 /**
- * 统一 SystemPrompt：角色 + act/judge 信封 + Midscene 工具说明 + Instruction。
- * 每个 OpenCode Session 只注入一次。
+ * 统一 SystemPrompt：每个 OpenCode Session 只注入一次。
  */
 export function buildEpisodeSystemPrompt(instruction: Instruction): string {
   const expectation = expectationText(instruction);
   const preconditions = preconditionsText(instruction);
-  const hints = hintsText(instruction);
+  const actions = listText(instruction.actions);
+  const hints = listText(instruction.hints);
 
   return [
-    'You are a mobile UI test Agent running a two-phase loop: act → judge → act → …',
-    'There is NO separate plan phase. In act you either emit a Midscene command or choose to judge.',
-    'Each user message is ONE phase and includes the latest device screenshot as an image attachment.',
-    'When a prior Midscene act ran, that user message also includes last_tool (command + result).',
+    'You are a mobile UI test Agent. Loop phases (in order):',
+    'precondition → act → (optional tool) → judge → precondition → …',
+    'Never skip precondition when the Instruction has preconditions text.',
+    'Each user message is ONE phase with the latest device screenshot.',
+    'When a prior Midscene act ran, that user message also includes last_tool.',
     'You MUST use the screenshot as primary evidence. Do NOT claim you cannot see images.',
-    'This OpenCode session retains prior turns — do not ask to restate full history.',
     '',
     JSON_EVIDENCE_RULES,
     '',
-    '## Phase protocols (each response is JSON + required evidence)',
+    '## Phase protocols',
+    '',
+    '### precondition',
+    'ONLY check whether Instruction preconditions hold on CURRENT screenshot.',
+    'Do NOT pursue expectation or execute the main actions list here.',
+    'JSON schema:',
+    '{"met": boolean, "command"?: string, "reason"?: string, "evidence": string}',
+    '- met=true → go to act (omit command).',
+    '- met=false → command MUST be one Midscene action that restores/satisfies preconditions; reason explains what is missing.',
+    '- If a PreCondition Golden image is attached, use it as the starting-state reference.',
     '',
     '### act',
-    'Look at the screenshot. Choose:',
-    '- next="act": output one Midscene command to execute now',
-    '- next="judge": ready to evaluate expectation against the screenshot — skip tool, go to judge',
+    'Preconditions are already met. Choose:',
+    '- next="act": one Midscene command toward expectation / actions',
+    '- next="judge": ready to evaluate expectation',
     'JSON schema:',
     '{"next": "act" | "judge", "command"?: string, "evidence": string}',
-    '- evidence: REQUIRED. Must cite: (1) blockers/popups visible? (2) preconditions met? (3) which hint step this command follows.',
-    '- When next="act", command MUST be a non-empty Midscene-executable string (see act_nl guide).',
-    '- When next="judge", omit command or use "".',
     '',
     ACT_DECISION_CHECKLIST,
     '',
     '### judge',
-    'ONLY success criterion: whether Instruction expectation is satisfied on the current screenshot.',
-    'Do NOT invent other goals. last_tool (if present) is context only.',
+    'Success criterion: Instruction expectation on CURRENT screenshot.',
     'JSON schema:',
-    '{"satisfied": boolean, "reason": string, "continue"?: boolean, "evidence": string}',
-    '- satisfied=true iff the expectation is met by visible UI (cite expectation + screenshot in evidence/reason).',
-    '- satisfied=false and continue!=false → another act→judge round',
+    '{"satisfied": boolean, "reason": string, "continue"?: boolean, "evidence": string, "preconditionMet"?: boolean}',
+    '- On failure, reason/evidence MUST say whether preconditions still hold (set preconditionMet true/false) and what specifically is wrong for expectation.',
+    '- satisfied=false and continue!=false → loop returns to precondition (not directly to act).',
+    '',
+    JUDGE_SEMANTIC_MATCH,
     '',
     MIDSCENE_ACT_NL_GUIDE,
     '',
     '## Current Instruction (fixed for this session)',
     `expectation: ${expectation}`,
     preconditions ? `preconditions: ${preconditions}` : undefined,
+    actions ? `actions:\n${actions}` : undefined,
     hints ? `hints:\n${hints}` : undefined,
   ]
     .filter(Boolean)
     .join('\n');
 }
 
-/** 上一轮 Midscene 执行（写入下一轮 user 消息） */
 export interface LastToolContext {
   command: string;
   ok: boolean;
@@ -179,14 +187,18 @@ export interface LastToolContext {
 }
 
 /**
- * 本轮 user prompt：相位 + Instruction 上下文 +（若有）上一轮 command/result；截图另作 file part。
+ * 本轮 user prompt：按相位注入不同参考，避免把所有 Golden 塞进同一上下文。
  */
 export function buildPhaseUserPrompt(
-  phase: 'act' | 'judge',
+  phase: LlmPhase,
   instruction: Instruction,
   lastTool?: LastToolContext,
+  options?: {
+    hasPreconditionRef?: boolean;
+    hasExpectationRef?: boolean;
+  },
 ): string {
-  const context = instructionContextBlock(instruction);
+  const core = instructionCoreBlock(instruction);
   const lastToolBlock = lastTool
     ? [
         'last_tool (Midscene act_nl just executed):',
@@ -204,33 +216,94 @@ export function buildPhaseUserPrompt(
         .join('\n')
     : undefined;
 
-  if (phase === 'act') {
+  const promptOff = process.env.AGENT_VISUAL_EVIDENCE_PROMPT === '0';
+
+  if (phase === 'precondition') {
+    const goldenHint =
+      !promptOff && options?.hasPreconditionRef
+        ? formatPreconditionGoldenHint(
+            readPreconditionEvidence(instruction.metadata),
+          )
+        : !promptOff
+          ? formatPreconditionGoldenHint(
+              readPreconditionEvidence(instruction.metadata),
+            )
+          : undefined;
     return [
-      'Phase: act.',
-      'Look at the attached screenshot. Return ONLY JSON: {"next":"act"|"judge","command"?,"evidence"} — evidence is REQUIRED.',
-      '',
-      'Decision order: (1) clear blockers/popups if hints mention 遮挡/关闭 and screenshot shows them',
-      '(2) verify preconditions (3) execute the earliest still-applicable hint step — use exact labels from hints.',
-      'Do NOT skip to expectation or click a wrong similar-looking control.',
+      'Phase: precondition.',
+      'Return ONLY JSON: {"met":boolean,"command"?,"reason"?,"evidence"} — evidence is REQUIRED.',
+      'Check ONLY whether preconditions hold on CURRENT. Do not chase expectation.',
+      'If unmet, command must restore the precondition state (one atomic Midscene action).',
       '',
       'Current Instruction:',
-      context,
+      core,
+      goldenHint,
       lastToolBlock,
-      'A device screenshot is attached as an image file part — use it as primary observation.',
+      options?.hasPreconditionRef
+        ? 'Images: device-screen.png = CURRENT; precondition-reference.png = historical PreCondition Golden.'
+        : 'A device screenshot is attached as an image file part — use it as primary observation.',
     ]
       .filter(Boolean)
       .join('\n');
   }
 
+  if (phase === 'act') {
+    const goldenHint =
+      !promptOff && options?.hasExpectationRef
+        ? formatExpectationGoldenHint(
+            readExpectationEvidence(instruction.metadata),
+          )
+        : undefined;
+    return [
+      'Phase: act.',
+      'Return ONLY JSON: {"next":"act"|"judge","command"?,"evidence"} — evidence is REQUIRED.',
+      'Preconditions were already verified. Focus on actions toward expectation.',
+      'Decision order: (1) clear blockers if needed (2) if Expectation Golden attached, close the gap (3) execute earliest applicable action.',
+      '',
+      'Current Instruction:',
+      core,
+      goldenHint,
+      lastToolBlock,
+      options?.hasExpectationRef
+        ? 'Images: device-screen.png = CURRENT; expectation-reference.png = historical Expectation Golden.'
+        : 'A device screenshot is attached as an image file part — use it as primary observation.',
+    ]
+      .filter(Boolean)
+      .join('\n');
+  }
+
+  // judge
   return [
     'Phase: judge.',
-    'Look at the attached screenshot. Return ONLY JSON: {"satisfied","reason","continue?","evidence"} — evidence is REQUIRED.',
-    'The ONLY success criterion is expectation below. preconditions and hints are context only.',
-    context,
-    'Set satisfied=true only if the screenshot clearly shows expectation is met.',
+    'Return ONLY JSON: {"satisfied","reason","continue?","evidence","preconditionMet?"} — evidence is REQUIRED.',
+    'Primary criterion: expectation. On failure you MUST set preconditionMet and explain:',
+    '- if preconditionMet=false: what precondition is missing (be specific)',
+    '- if preconditionMet=true: what expectation outcome is missing (be specific)',
+    'Match by UI role / screen outcome; different labels for the same control role are OK.',
+    '',
+    'Current Instruction:',
+    core,
+    !promptOff && resolveReferenceEvidence(readExpectationEvidence(instruction.metadata))
+      ? formatExpectationGoldenHint(
+          readExpectationEvidence(instruction.metadata),
+        )
+      : undefined,
     lastToolBlock,
-    'A device screenshot is attached as an image file part — use it as primary observation.',
+    options?.hasExpectationRef
+      ? 'Images: device-screen.png = CURRENT; expectation-reference.png = historical Expectation Golden (soft reference).'
+      : 'A device screenshot is attached as an image file part — use it as primary observation.',
   ]
     .filter(Boolean)
     .join('\n');
+}
+
+/** @deprecated kept for callers that only need a boolean */
+export function instructionHasPreconditionGolden(
+  instruction: Instruction,
+): boolean {
+  return Boolean(
+    resolvePreconditionEvidence(
+      readPreconditionEvidence(instruction.metadata),
+    ),
+  );
 }
