@@ -152,7 +152,7 @@ export class OpenCodeHttpClient {
   }
 
   /**
-   * 一轮带可选截图的消息。
+   * 一轮带可选截图的消息（可多图：当前屏 + 历史成功参考）。
    * `system` 仅应在 Session 第一轮传入。
    */
   postRound(
@@ -164,21 +164,29 @@ export class OpenCodeHttpClient {
       /** data:image/...;base64,... */
       imageDataUrl?: string;
       imageFilename?: string;
+      /** 额外图片（如历史成功参考图） */
+      extraImages?: Array<{ dataUrl: string; filename: string }>;
       noReply?: boolean;
       agent?: string;
       model?: { providerID: string; modelID: string };
     },
   ): Promise<OpenCodeMessageResponse> {
     const parts: OpenCodeMessagePart[] = [{ type: 'text', text: input.text }];
-    if (input.imageDataUrl) {
-      const mimeMatch = /^data:([^;]+);base64,/.exec(input.imageDataUrl);
+    const pushImage = (dataUrl: string, filename: string) => {
+      const mimeMatch = /^data:([^;]+);base64,/.exec(dataUrl);
       const mime = mimeMatch?.[1] ?? 'image/png';
       parts.push({
         type: 'file',
         mime,
-        filename: input.imageFilename ?? 'screen.png',
-        url: input.imageDataUrl,
+        filename,
+        url: dataUrl,
       });
+    };
+    if (input.imageDataUrl) {
+      pushImage(input.imageDataUrl, input.imageFilename ?? 'screen.png');
+    }
+    for (const img of input.extraImages ?? []) {
+      if (img.dataUrl) pushImage(img.dataUrl, img.filename);
     }
     return this.postMessage(sessionId, {
       parts,

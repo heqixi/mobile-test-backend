@@ -57,18 +57,48 @@ export class ExecutorHttpClient {
     method: string,
     path: string,
     body?: unknown,
+    options?: {
+      acceptStatuses?: number[];
+      timeoutMs?: number;
+      signal?: AbortSignal;
+    },
   ): Promise<T> {
-    const res = await this.fetchImpl(`${this.baseUrl}${path}`, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: body === undefined ? undefined : JSON.stringify(body),
-    });
-    const text = await res.text();
-    if (!res.ok) {
-      throw new ExecutorHttpError(res.status, text, path);
+    const timeoutMs = options?.timeoutMs;
+    const ctrl =
+      timeoutMs != null && timeoutMs > 0 ? new AbortController() : null;
+    const timer =
+      ctrl && timeoutMs != null
+        ? setTimeout(() => ctrl.abort(), timeoutMs)
+        : null;
+    try {
+      const res = await this.fetchImpl(`${this.baseUrl}${path}`, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: body === undefined ? undefined : JSON.stringify(body),
+        signal: options?.signal ?? ctrl?.signal,
+      });
+      const text = await res.text();
+      const accepted = options?.acceptStatuses ?? [];
+      if (!res.ok && !accepted.includes(res.status)) {
+        throw new ExecutorHttpError(res.status, text, path);
+      }
+      if (!text) return undefined as T;
+      return JSON.parse(text) as T;
+    } catch (error) {
+      if (
+        ctrl?.signal.aborted ||
+        (error instanceof Error && error.name === 'AbortError')
+      ) {
+        throw new ExecutorHttpError(
+          408,
+          `timeout after ${timeoutMs}ms`,
+          path,
+        );
+      }
+      throw error;
+    } finally {
+      if (timer) clearTimeout(timer);
     }
-    if (!text) return undefined as T;
-    return JSON.parse(text) as T;
   }
 
   async captureScreenshot(): Promise<ExecutorScreenshot> {
@@ -90,7 +120,11 @@ export class ExecutorHttpClient {
       return {
         ok: Boolean(dataUrl),
         dataUrl,
-        base64: shot.base64,
+        base64:
+          shot.base64 ??
+          (dataUrl?.includes('base64,')
+            ? dataUrl.split('base64,')[1]
+            : undefined),
         mime,
         error: shot.error,
       };
@@ -186,6 +220,65 @@ export class ExecutorHttpClient {
     } catch {
       return { aborted: false };
     }
+  }
+
+  /** POST /aep/v0.2/locate */
+  async locate(input: {
+    phrase: string;
+    deepLocate?: boolean;
+    screenshotBase64?: string;
+    /** 默认 20s；Visual Evidence 应设更短以免拖死 Episode */
+    timeoutMs?: number;
+  }): Promise<{
+    phrase: string;
+    ok: boolean;
+    rectPx?: { left: number; top: number; width: number; height: number };
+    center?: [number, number];
+    dpr?: number;
+    quality?: 'bbox' | 'point_fallback';
+    deepLocate?: boolean;
+    durationMs?: number;
+    error?: string;
+  }> {
+    const timeoutMs = input.timeoutMs ?? 20_000;
+    try {
+      return await this.request(
+        'POST',
+        '/aep/v0.2/locate',
+        {
+          phrase: input.phrase,
+          deepLocate: input.deepLocate,
+          screenshotBase64: input.screenshotBase64,
+        },
+        { acceptStatuses: [422], timeoutMs },
+      );
+    } catch (error) {
+      return {
+        phrase: input.phrase,
+        ok: false,
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
+  }
+
+  /** POST /aep/v0.2/annotate */
+  async annotate(input: {
+    screenshotBase64?: string;
+    regions: Array<{
+      rectPx: { left: number; top: number; width: number; height: number };
+      label: string;
+      color?: string;
+    }>;
+    style?: { strokeWidth?: number; fontSize?: number };
+  }): Promise<{
+    ok: boolean;
+    annotatedBase64?: string;
+    width?: number;
+    height?: number;
+    mime?: string;
+    error?: string;
+  }> {
+    return this.request('POST', '/aep/v0.2/annotate', input);
   }
 }
 
