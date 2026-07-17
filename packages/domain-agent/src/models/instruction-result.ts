@@ -7,6 +7,7 @@
 
 import type { ISO8601, UUID } from '@mtp/shared-kernel';
 import type { Turn } from './turns.js';
+import type { VisualEvidence } from './visual-evidence.js';
 
 /** Loop 结束状态 */
 export type InstructionResultStatus =
@@ -37,6 +38,9 @@ export interface InstructionResult {
 
   /** 完整 transcript 副本，供 Case 存档或 Client 展示 */
   turns: Turn[];
+
+  /** 终态 Visual Evidence（若启用） */
+  visualEvidence?: VisualEvidence;
 
   finishedAt: ISO8601;
 }

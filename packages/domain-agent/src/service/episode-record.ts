@@ -10,6 +10,7 @@ import type { Episode } from '../models/episode.js';
 import type { Instruction } from '../models/instruction.js';
 import type { InstructionResult } from '../models/instruction-result.js';
 import type { Turn } from '../models/turns.js';
+import type { VisualEvidence } from '../models/visual-evidence.js';
 
 export interface EpisodeRecord {
   episode: Episode;
@@ -20,6 +21,12 @@ export interface EpisodeRecord {
   abortRequested?: boolean;
   /** 当前等待中的 Playground requestId（便于 abort 时 cancel） */
   activePlaygroundRequestId?: string;
+  /** 最近一次相位截图（供 EvidenceCompiler 复用） */
+  lastScreenshotBase64?: string;
+  /** 最近一次 Visual Evidence */
+  lastVisualEvidence?: VisualEvidence;
+  /** 当前 dispatch 完成后回到哪一相位 */
+  dispatchOrigin?: 'precondition' | 'act';
 }
 
 export function nowIso(): string {
@@ -92,6 +99,9 @@ export function toInstructionResult(rec: EpisodeRecord): InstructionResult {
     reason: judge?.reason ?? `episode ${rec.episode.status}`,
     status: terminal,
     turns: structuredClone(rec.episode.turns),
+    visualEvidence: rec.lastVisualEvidence
+      ? structuredClone(rec.lastVisualEvidence)
+      : undefined,
     finishedAt: nowIso(),
   };
 }
