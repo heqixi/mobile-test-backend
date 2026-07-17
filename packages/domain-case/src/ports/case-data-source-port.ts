@@ -12,6 +12,7 @@ import type {
   ConnectedCaseSummary,
   ConnectedCompiledBundle,
 } from '../models/connected-case.js';
+import type { CompileProgressEvent } from '../models/compile-progress.js';
 
 export interface CaseDataSourceListFilter {
   /** 目录路径前缀匹配 */
@@ -51,4 +52,12 @@ export interface CaseDataSourcePort {
    * 协议 `POST .../compile`。
    */
   compileCase?(caseId: string): Promise<ConnectedCompiledBundle>;
+
+  /**
+   * 流式编译：每步回调 `onEvent`（与 NDJSON 事件同形），最终返回完整 bundle。
+   */
+  compileCaseStream?(
+    caseId: string,
+    onEvent: (event: CompileProgressEvent) => void,
+  ): Promise<ConnectedCompiledBundle>;
 }

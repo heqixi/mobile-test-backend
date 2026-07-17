@@ -14,6 +14,7 @@ import type {
   ConnectedCaseSummary,
   ConnectedCompiledBundle,
 } from '../models/connected-case.js';
+import type { CompileProgressEvent } from '../models/compile-progress.js';
 import type { Instruction } from '@mtp/domain-agent';
 import type {
   CaseDataSourceListFilter,
@@ -56,4 +57,12 @@ export interface CaseDataConnectorPort {
    * 业务侧编译（切步 + LLM），代理远端 `compileCase`。
    */
   compileCase(caseId: string): Promise<ConnectedCompiledBundle>;
+
+  /**
+   * 流式编译：逐步回调进度事件。
+   */
+  compileCaseStream(
+    caseId: string,
+    onEvent: (event: CompileProgressEvent) => void,
+  ): Promise<ConnectedCompiledBundle>;
 }

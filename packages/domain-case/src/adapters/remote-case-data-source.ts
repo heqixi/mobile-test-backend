@@ -13,6 +13,7 @@ import type {
   ConnectedCaseSummary,
   ConnectedCompiledBundle,
 } from '../models/connected-case.js';
+import type { CompileProgressEvent } from '../models/compile-progress.js';
 import {
   caseLibraryPaths,
   type CaseLibraryCompiledResponse,
@@ -144,6 +145,63 @@ export function createRemoteCaseDataSource(
         caseLibraryPaths.compile(caseId),
         {},
       );
+    },
+
+    async compileCaseStream(caseId, onEvent) {
+      const path = `${caseLibraryPaths.compile(caseId)}?stream=1`;
+      const res = await fetchFn(`${base}${path}`, {
+        method: 'POST',
+        headers: {
+          Accept: 'application/x-ndjson',
+          'Content-Type': 'application/json',
+        },
+        body: '{}',
+      });
+      if (!res.ok || !res.body) {
+        await readJson(res, path);
+        throw new Error(`${res.status} ${path}: stream unavailable`);
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let finalBundle: ConnectedCompiledBundle | null = null;
+
+      const handleLine = (line: string) => {
+        const trimmed = line.trim();
+        if (!trimmed) return;
+        const event = JSON.parse(trimmed) as CompileProgressEvent;
+        onEvent(event);
+        if (event.type === 'done') {
+          finalBundle = event.bundle;
+        }
+        if (event.type === 'error') {
+          const code =
+            event.code === 'COMPILE_REJECTED' ||
+            event.code === 'COMPILE_REPAIR_EXHAUSTED' ||
+            event.code === 'COMPILE_LLM_FAILED'
+              ? event.code
+              : 'COMPILE_LLM_FAILED';
+          throw new CaseDomainError(code, event.message, {
+            details: { caseId, index: event.index },
+          });
+        }
+      };
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? '';
+        for (const line of lines) handleLine(line);
+      }
+      if (buffer.trim()) handleLine(buffer);
+
+      if (!finalBundle) {
+        throw new Error(`${path}: stream ended without done event`);
+      }
+      return finalBundle;
     },
   };
 

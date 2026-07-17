@@ -88,5 +88,49 @@ export function createCaseDataConnector(): CaseDataConnectorPort {
       }
       return s.compileCase(caseId);
     },
+
+    async compileCaseStream(caseId, onEvent) {
+      const s = requireSource(source);
+      if (s.compileCaseStream) {
+        return s.compileCaseStream(caseId, onEvent);
+      }
+      if (!s.compileCase) {
+        throw new CaseDomainError(
+          'COMPILE_REJECTED',
+          'Connected source does not support compileCase',
+          { details: { caseId } },
+        );
+      }
+      onEvent({
+        type: 'start',
+        caseId,
+        total: 1,
+        steps: [{ order: 1, stepId: 'step-1', text: caseId }],
+      });
+      onEvent({
+        type: 'step_start',
+        caseId,
+        index: 0,
+        total: 1,
+        stepOrder: 1,
+        stepId: 'step-1',
+        stepText: caseId,
+      });
+      const bundle = await s.compileCase(caseId);
+      const instruction = bundle.instructions[0];
+      if (instruction) {
+        onEvent({
+          type: 'step_done',
+          caseId,
+          index: 0,
+          total: 1,
+          stepOrder: 1,
+          instruction,
+          report: bundle.reports?.[0] ?? { ok: true, issues: [] },
+        });
+      }
+      onEvent({ type: 'done', caseId, bundle });
+      return bundle;
+    },
   };
 }
