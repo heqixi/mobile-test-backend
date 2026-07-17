@@ -27,8 +27,16 @@ import type {
   ActTurn,
   JudgeTurn,
   ObservationTurn,
+  PreconditionTurn,
   ToolCall,
 } from '../models/turns.js';
+import {
+  bindJudgeSuccessAsCandidate,
+  bindJudgeSuccessAsCaseTailGolden,
+  isCaseTailInstruction,
+  readExpectationEvidence,
+  visualEvidenceToStored,
+} from '../models/visual-evidence.js';
 import type { AgentPort } from '../ports/agent-port.js';
 import type { LlmPhase } from '../ports/external-llm-port.js';
 import {
@@ -48,11 +56,17 @@ import {
   touch,
   type EpisodeRecord,
 } from './episode-record.js';
-import { parseAct, parseJudge } from './parse-phase.js';
+import {
+  compileVisualEvidence,
+  resolveVisualEvidenceMode,
+} from './evidence-compiler.js';
+import { parseAct, parseJudge, parsePrecondition } from './parse-phase.js';
 import { askPhaseLlm } from './phase-llm.js';
+import { expectationText, hasPreconditions } from './system-prompt.js';
+import { persistVisualEvidencePng } from './visual-evidence-store.js';
 
 export { ACT_NL_TOOL, summarizeMidsceneResult } from './act-nl.js';
-export { parseAct, parseJudge } from './parse-phase.js';
+export { parseAct, parseJudge, parsePrecondition } from './parse-phase.js';
 
 export interface CreateAgentLoopOptions extends OpenCodeHttpOptions {
   client?: OpenCodeHttpClient;
@@ -62,6 +76,8 @@ export interface CreateAgentLoopOptions extends OpenCodeHttpOptions {
   maxRounds?: number;
   /** 连续 judge 未满足（unsatisfied）上限；默认 3，连续达到后直接 failed 并中止 Midscene */
   maxJudgeFailures?: number;
+  /** 连续 precondition 修复次数上限；默认 3 */
+  maxPreconditionFailures?: number;
   onEvent?: AgentLoopEventListener;
   model?: { providerID: string; modelID: string };
   /**
@@ -94,6 +110,12 @@ export function createAgentLoop(
       Number(process.env.AGENT_MAX_JUDGE_FAILURES ?? 3);
     return Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : 3;
   })();
+  const maxPreconditionFailures = (() => {
+    const raw =
+      options.maxPreconditionFailures ??
+      Number(process.env.AGENT_MAX_PRECONDITION_FAILURES ?? 3);
+    return Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : 3;
+  })();
   const onEvent = options.onEvent;
   const openCodeModel = resolveOpenCodeModel(options.model);
   const runActNlViaPlayground = options.runActNlViaPlayground;
@@ -109,11 +131,73 @@ export function createAgentLoop(
     onEvent,
   };
 
+  function log(
+    level: 'info' | 'warn' | 'error',
+    msg: string,
+    extra?: Record<string, unknown>,
+  ): void {
+    const suffix =
+      extra && Object.keys(extra).length
+        ? ` ${JSON.stringify(extra)}`
+        : '';
+    const line = `[agent-loop] ${msg}${suffix}`;
+    if (level === 'warn') console.warn(line);
+    else if (level === 'error') console.error(line);
+    else console.log(line);
+  }
+
+  /** SSE 过大时浏览器 EventSource 会丢事件；限制图片 dataUrl */
+  const SSE_IMAGE_MAX_CHARS = Number(
+    process.env.AGENT_SSE_IMAGE_MAX_CHARS ?? 120_000,
+  );
+
+  function sseSafeImage(
+    dataUrl: string | undefined,
+    kind: string,
+  ): string | undefined {
+    if (!dataUrl) return undefined;
+    if (
+      Number.isFinite(SSE_IMAGE_MAX_CHARS) &&
+      SSE_IMAGE_MAX_CHARS > 0 &&
+      dataUrl.length > SSE_IMAGE_MAX_CHARS
+    ) {
+      log('warn', `SSE omit ${kind} image`, {
+        len: dataUrl.length,
+        max: SSE_IMAGE_MAX_CHARS,
+      });
+      return undefined;
+    }
+    return dataUrl;
+  }
+
   function emit(event: AgentLoopEvent): void {
     try {
+      log('info', `emit ${event.type}`, {
+        episodeId: event.episodeId,
+        instructionId: event.instructionId,
+        streamId: event.streamId,
+        round: event.round,
+        ...(event.type === 'turn.act'
+          ? { next: event.next, command: event.command?.slice(0, 80) }
+          : {}),
+        ...(event.type === 'turn.judge'
+          ? { satisfied: event.satisfied }
+          : {}),
+        ...(event.type === 'turn.visual_evidence'
+          ? {
+              evidenceId: event.evidenceId,
+              regions: event.regions?.length,
+              hasAnnotated: Boolean(event.annotatedDataUrl),
+              hasScreenshot: Boolean(event.screenshotDataUrl),
+              bindAsCandidate: event.bindAsCandidate,
+            }
+          : {}),
+      });
       onEvent?.(event);
-    } catch {
-      // ignore
+    } catch (error) {
+      log('error', `emit ${event.type} failed`, {
+        message: error instanceof Error ? error.message : String(error),
+      });
     }
   }
 
@@ -200,9 +284,96 @@ export function createAgentLoop(
     }
   }
 
+  async function doPrecondition(rec: EpisodeRecord): Promise<Episode> {
+    throwIfAborted(rec);
+    if (!hasPreconditions(rec.episode.instruction)) {
+      rec.episode.status = 'acting';
+      touch(rec);
+      return doAct(rec);
+    }
+
+    rec.episode.status = 'checking_precondition';
+    log('info', 'phase precondition start', {
+      episodeId: rec.episode.episodeId,
+      round: rec.episode.round,
+    });
+    const text = await askPhaseLlm(phaseLlm, rec, 'precondition');
+    throwIfAborted(rec);
+    const parsed = parsePrecondition(text);
+    const turn: PreconditionTurn = {
+      turnId: randomUUID(),
+      at: nowIso(),
+      ...parsed,
+    };
+    rec.episode.lastPrecondition = turn;
+    appendTurn(rec, { kind: 'precondition', turn });
+
+    const command = actNlCommand(turn.toolCalls);
+    emit({
+      ...baseEvent(rec),
+      type: 'turn.precondition',
+      met: turn.met,
+      command,
+      evidence: turn.evidence,
+      reason: turn.reason,
+    });
+
+    if (turn.met) {
+      rec.episode.consecutivePreconditionFailures = 0;
+      rec.episode.status = 'acting';
+      log('info', 'phase precondition met → act', {
+        episodeId: rec.episode.episodeId,
+      });
+      touch(rec);
+      return structuredClone(rec.episode);
+    }
+
+    const failures =
+      (rec.episode.consecutivePreconditionFailures ?? 0) + 1;
+    rec.episode.consecutivePreconditionFailures = failures;
+
+    if (!command) {
+      return await applyFail(
+        rec,
+        `precondition unmet and no recovery command: ${turn.reason ?? turn.evidence}`,
+        true,
+      );
+    }
+    if (failures >= maxPreconditionFailures) {
+      return await applyFail(
+        rec,
+        `precondition unmet ${failures} consecutive times (limit ${maxPreconditionFailures}): ${turn.reason ?? turn.evidence}`,
+        true,
+      );
+    }
+
+    rec.dispatchOrigin = 'precondition';
+    rec.episode.status = 'dispatching';
+    // stash toolCalls on lastAct-compatible path: doDispatch reads lastAct
+    rec.episode.lastAct = {
+      turnId: turn.turnId,
+      at: turn.at,
+      raw: turn.raw,
+      next: 'act',
+      toolCalls: turn.toolCalls,
+      evidence: turn.evidence,
+    };
+    log('info', 'phase precondition unmet → dispatch', {
+      episodeId: rec.episode.episodeId,
+      failures,
+      command: command.slice(0, 80),
+    });
+    touch(rec);
+    return structuredClone(rec.episode);
+  }
+
   async function doAct(rec: EpisodeRecord): Promise<Episode> {
     throwIfAborted(rec);
     rec.episode.status = 'acting';
+    log('info', 'phase act start', {
+      episodeId: rec.episode.episodeId,
+      round: rec.episode.round,
+    });
     const text = await askPhaseLlm(phaseLlm, rec, 'act');
     throwIfAborted(rec);
     const parsed = parseAct(text);
@@ -225,6 +396,15 @@ export function createAgentLoop(
 
     rec.episode.status =
       act.next === 'act' && command ? 'dispatching' : 'judging';
+    if (rec.episode.status === 'dispatching') {
+      rec.dispatchOrigin = 'act';
+    }
+    log('info', 'phase act done', {
+      episodeId: rec.episode.episodeId,
+      next: act.next,
+      nextStatus: rec.episode.status,
+      command: command?.slice(0, 80),
+    });
     touch(rec);
     return structuredClone(rec.episode);
   }
@@ -242,6 +422,11 @@ export function createAgentLoop(
     }
 
     const command = actNlCommand(calls);
+    log('info', 'phase dispatch start', {
+      episodeId: rec.episode.episodeId,
+      command: command?.slice(0, 80),
+      viaPlayground: Boolean(runActNlViaPlayground),
+    });
     let results: OpaqueJson[];
 
     if (!command) {
@@ -265,6 +450,10 @@ export function createAgentLoop(
       throwIfAborted(rec);
 
       if (!freeform) {
+        log('info', 'dispatch fallback freeform', {
+          episodeId: rec.episode.episodeId,
+          requestId,
+        });
         freeform = await executor.freeformExecute(command);
         throwIfAborted(rec);
       }
@@ -301,14 +490,208 @@ export function createAgentLoop(
       resultPreview: summarizeMidsceneResult(first?.result),
     });
 
-    rec.episode.status = 'judging';
+    rec.episode.status =
+      rec.dispatchOrigin === 'precondition'
+        ? 'checking_precondition'
+        : 'judging';
+    rec.dispatchOrigin = undefined;
+    log('info', 'phase dispatch done', {
+      episodeId: rec.episode.episodeId,
+      ok: first?.ok === true,
+      durationMs: first?.durationMs,
+      nextStatus: rec.episode.status,
+    });
     touch(rec);
     return structuredClone(rec.episode);
+  }
+
+  async function maybeCompileVisualEvidence(
+    rec: EpisodeRecord,
+    judge: JudgeTurn,
+    terminal: boolean,
+  ): Promise<void> {
+    const mode = resolveVisualEvidenceMode();
+    log('info', 'visual evidence begin', {
+      episodeId: rec.episode.episodeId,
+      mode,
+      terminal,
+      satisfied: judge.satisfied,
+      hasScreenshot: Boolean(rec.lastScreenshotBase64),
+      actions: rec.episode.instruction.actions?.length ?? 0,
+      hints: rec.episode.instruction.hints?.length ?? 0,
+    });
+    if (mode === 'off') {
+      log('info', 'visual evidence skipped mode=off');
+      return;
+    }
+    if (mode === 'final' && !terminal) {
+      log('info', 'visual evidence skipped non-terminal (mode=final)');
+      return;
+    }
+    if (mode === 'failed' && !(terminal && !judge.satisfied)) {
+      log('info', 'visual evidence skipped (mode=failed, not failed terminal)');
+      return;
+    }
+    if (rec.abortRequested) {
+      log('warn', 'visual evidence skipped abortRequested');
+      return;
+    }
+
+    const t0 = Date.now();
+    try {
+      const ve = await compileVisualEvidence({
+        executor,
+        instruction: rec.episode.instruction,
+        episodeId: rec.episode.episodeId,
+        phase: 'judge',
+        textEvidence: judge.evidence,
+        judgeSatisfied: judge.satisfied,
+        screenshotBase64: rec.lastScreenshotBase64,
+      });
+      if (!ve) {
+        log('warn', 'visual evidence null (no screenshot)', {
+          episodeId: rec.episode.episodeId,
+          ms: Date.now() - t0,
+        });
+        return;
+      }
+      rec.lastVisualEvidence = ve;
+
+      // Judge 成功：末步直接 Golden；否则 candidate 待下游验证
+      const bindOk = Boolean(judge.satisfied && ve.screenshot.dataUrl);
+      const caseTail = isCaseTailInstruction(rec.episode.instruction.metadata);
+      const bindAsGolden = bindOk && caseTail;
+      const bindAsCandidate = bindOk && !caseTail;
+
+      log('info', 'visual evidence compiled', {
+        episodeId: rec.episode.episodeId,
+        ms: Date.now() - t0,
+        regions: ve.regions.length,
+        hit: ve.regions.filter((r) => r.locateOk).length,
+        bindAsCandidate,
+        bindAsGolden,
+        caseTail,
+        annotatedLen: ve.annotated.dataUrl?.length ?? 0,
+        screenshotLen: ve.screenshot.dataUrl?.length ?? 0,
+      });
+
+      const saved = persistVisualEvidencePng({
+        evidenceId: ve.evidenceId,
+        annotatedDataUrl: ve.annotated.dataUrl,
+        screenshotDataUrl: ve.screenshot.dataUrl,
+      });
+      let localPath: string | undefined;
+      let fileUrl: string | undefined;
+      let imageHttpUrl: string | undefined;
+      if (saved) {
+        localPath = saved.localPath;
+        fileUrl = saved.fileUrl;
+        imageHttpUrl = saved.httpUrl;
+        log('info', 'visual evidence persisted', {
+          evidenceId: ve.evidenceId,
+          kind: saved.kind,
+          localPath: saved.localPath,
+          httpUrl: saved.httpUrl,
+        });
+      } else {
+        log('warn', 'visual evidence persist failed', {
+          evidenceId: ve.evidenceId,
+        });
+      }
+
+      if (bindOk) {
+        const caseId =
+          typeof rec.episode.instruction.metadata?.caseId === 'string'
+            ? rec.episode.instruction.metadata.caseId
+            : undefined;
+        const stored = visualEvidenceToStored(ve, {
+          caseId,
+          round: rec.episode.round,
+          judgeReason: judge.reason,
+          reviewStatus: caseTail ? 'approved' : 'pending',
+          reviewer: caseTail ? 'case-tail' : 'judge-pass',
+          reviewNote: caseTail
+            ? 'last instruction — no successor required'
+            : 'awaiting successor instruction success',
+          validation: caseTail
+            ? {
+                status: 'true_positive',
+                validatedAt: new Date().toISOString(),
+                note: '末步无需下游验证；Judge 成功即 Golden',
+              }
+            : {
+                status: 'awaiting_successor',
+                note: '本步成功态是下一步初始条件；待下游 Instruction 成功后升为 Golden',
+              },
+          assets: {
+            imageHttpUrl,
+            localPath,
+            fileUrl,
+          },
+        });
+        const prev = readExpectationEvidence(
+          rec.episode.instruction.metadata,
+        );
+        const snap = expectationText(rec.episode.instruction);
+        const meta = {
+          ...(rec.episode.instruction.metadata ?? {}),
+          expectationEvidence: caseTail
+            ? bindJudgeSuccessAsCaseTailGolden(prev, stored, snap)
+            : bindJudgeSuccessAsCandidate(prev, stored, snap),
+        };
+        rec.episode.instruction = {
+          ...rec.episode.instruction,
+          metadata: meta,
+        };
+        log('info', 'visual evidence bound', {
+          episodeId: rec.episode.episodeId,
+          evidenceId: ve.evidenceId,
+          as: caseTail ? 'golden(case-tail)' : 'candidate',
+          imageHttpUrl,
+        });
+      }
+
+      const annotatedDataUrl = sseSafeImage(ve.annotated.dataUrl, 'annotated');
+      let screenshotDataUrl: string | undefined;
+      if (!saved && !annotatedDataUrl) {
+        screenshotDataUrl = sseSafeImage(ve.screenshot.dataUrl, 'screenshot');
+      }
+
+      emit({
+        ...baseEvent(rec),
+        type: 'turn.visual_evidence',
+        evidenceId: ve.evidenceId,
+        annotatedDataUrl,
+        screenshotDataUrl,
+        localPath,
+        fileUrl,
+        imageHttpUrl,
+        regions: ve.regions.map((r) => ({
+          id: r.id,
+          label: r.label,
+          phrase: r.phrase,
+          locateOk: r.locateOk,
+        })),
+        judgeSatisfied: judge.satisfied,
+        bindAsCandidate,
+        bindAsGolden,
+      });
+    } catch (error) {
+      log('error', 'visual evidence failed', {
+        episodeId: rec.episode.episodeId,
+        ms: Date.now() - t0,
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
   }
 
   async function doJudge(rec: EpisodeRecord): Promise<Episode> {
     throwIfAborted(rec);
     rec.episode.status = 'judging';
+    log('info', 'phase judge start', {
+      episodeId: rec.episode.episodeId,
+      round: rec.episode.round,
+    });
     const text = await askPhaseLlm(phaseLlm, rec, 'judge');
     throwIfAborted(rec);
     const parsed = parseJudge(text);
@@ -330,11 +713,14 @@ export function createAgentLoop(
       reason: judge.reason,
       evidence: judge.evidence,
       continue: judge.continue,
+      preconditionMet: judge.preconditionMet,
     });
 
     if (judge.satisfied) {
       rec.episode.consecutiveJudgeFailures = 0;
       rec.episode.status = 'completed';
+      // VE 在 completed 之前：对话顺序 judge → VE → completed；locate 已有超时
+      await maybeCompileVisualEvidence(rec, judge, true);
       emit({
         ...baseEvent(rec),
         type: 'episode.completed',
@@ -345,8 +731,15 @@ export function createAgentLoop(
       const consecutiveFailures =
         (rec.episode.consecutiveJudgeFailures ?? 0) + 1;
       rec.episode.consecutiveJudgeFailures = consecutiveFailures;
+      log('info', 'judge unsatisfied', {
+        episodeId: rec.episode.episodeId,
+        consecutiveFailures,
+        maxJudgeFailures,
+        continue: judge.continue,
+      });
 
       if (consecutiveFailures >= maxJudgeFailures) {
+        await maybeCompileVisualEvidence(rec, judge, true);
         return await applyFail(
           rec,
           `judge unsatisfied ${consecutiveFailures} consecutive times (limit ${maxJudgeFailures}): ${judge.reason}`,
@@ -354,8 +747,13 @@ export function createAgentLoop(
         );
       }
       if (judge.continue !== false && round < maxRounds) {
-        rec.episode.status = 'acting';
+        // Judge 失败 → 回到 precondition（分步），不要直接塞满 act 上下文
+        rec.episode.status = 'checking_precondition';
+        if (resolveVisualEvidenceMode() === 'always') {
+          await maybeCompileVisualEvidence(rec, judge, false);
+        }
       } else {
+        await maybeCompileVisualEvidence(rec, judge, true);
         return await applyFail(rec, judge.reason, true);
       }
     }
@@ -376,6 +774,7 @@ export function createAgentLoop(
         turns: [],
         round: 0,
         consecutiveJudgeFailures: 0,
+        consecutivePreconditionFailures: 0,
         createdAt: ts,
         updatedAt: ts,
       };
@@ -392,6 +791,11 @@ export function createAgentLoop(
         type: 'episode.started',
         expectationPreview: expectationPreview(instruction),
       });
+      // 首相位：有 preconditions 则先检查，否则直接 act
+      rec.episode.status = hasPreconditions(instruction)
+        ? 'checking_precondition'
+        : 'acting';
+      touch(rec);
       if (rec.streamId && pendingAbortStreamIds.has(rec.streamId)) {
         pendingAbortStreamIds.delete(rec.streamId);
         return applyAbort(rec, 'aborted by user (pending)');
@@ -400,6 +804,13 @@ export function createAgentLoop(
     },
 
     async runInstruction(instruction) {
+      const t0 = Date.now();
+      log('info', 'runInstruction start', {
+        instructionId: instruction.instructionId,
+        streamId: streamIdOf(instruction),
+        expectation: expectationText(instruction).slice(0, 80),
+        actions: instruction.actions?.length ?? 0,
+      });
       const episode = await port.openEpisode(instruction);
       const rec = get(episode.episodeId);
       try {
@@ -408,6 +819,11 @@ export function createAgentLoop(
             applyAbort(rec);
             break;
           }
+          log('info', 'advance', {
+            episodeId: episode.episodeId,
+            status: rec.episode.status,
+            round: rec.episode.round,
+          });
           await port.advance(episode.episodeId);
         }
       } catch (error) {
@@ -415,10 +831,19 @@ export function createAgentLoop(
         if (message === 'EPISODE_ABORTED' || rec.abortRequested) {
           applyAbort(rec);
         } else {
+          log('error', 'runInstruction error', { message });
           throw error;
         }
       }
-      return toInstructionResult(rec);
+      const result = toInstructionResult(rec);
+      log('info', 'runInstruction done', {
+        episodeId: episode.episodeId,
+        status: result.status,
+        satisfied: result.satisfied,
+        ms: Date.now() - t0,
+        hasVisualEvidence: Boolean(result.visualEvidence),
+      });
+      return result;
     },
 
     async advance(episodeId) {
@@ -433,6 +858,22 @@ export function createAgentLoop(
       }
 
       try {
+        if (status === 'checking_precondition') {
+          const last = rec.episode.turns[rec.episode.turns.length - 1];
+          // dispatch 回来后 last 是 tool_result → 再检查 precondition
+          if (last?.kind === 'precondition' && last.turn.met) {
+            return await doAct(rec);
+          }
+          if (
+            last?.kind === 'precondition' &&
+            !last.turn.met &&
+            actNlCommand(last.turn.toolCalls)
+          ) {
+            return await doDispatch(rec);
+          }
+          return await doPrecondition(rec);
+        }
+
         if (status === 'open' || status === 'acting') {
           const last = rec.episode.turns[rec.episode.turns.length - 1];
           if (status === 'acting' && last?.kind === 'act') {
@@ -451,11 +892,14 @@ export function createAgentLoop(
 
         if (status === 'judging') {
           const last = rec.episode.turns[rec.episode.turns.length - 1];
-          if (last?.kind === 'judge') return await doAct(rec);
+          // judge 失败后 status 已改为 checking_precondition；此处仅处理待执行 judge
+          if (last?.kind === 'judge') {
+            return await doPrecondition(rec);
+          }
           return await doJudge(rec);
         }
 
-        return await doAct(rec);
+        return await doPrecondition(rec);
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         if (message === 'EPISODE_ABORTED') {
@@ -471,7 +915,11 @@ export function createAgentLoop(
         return structuredClone(rec.episode);
       }
       try {
-        return phase === 'act' ? await doAct(rec) : await doJudge(rec);
+        return phase === 'precondition'
+          ? await doPrecondition(rec)
+          : phase === 'act'
+            ? await doAct(rec)
+            : await doJudge(rec);
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         if (message === 'EPISODE_ABORTED') {
