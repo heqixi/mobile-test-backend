@@ -28,6 +28,13 @@ import type { MidsceneAgentLike } from '../midscene/agent-types.js';
 import { captureUiSnapshot } from '../midscene/sample.js';
 import type { EmbeddedSidecarHandle } from '../adapters/playground-sidecar.js';
 import { listAdbDevices } from '../adapters/adb-screenshot.js';
+import type {
+  AnnotateRequest,
+  AnnotateResult,
+  LocateHit,
+  LocateRequest,
+} from '../models/visual-evidence.js';
+import { annotateScreenshotBase64 } from './annotate-image.js';
 
 const BUILTIN_TOOLS: ToolDescription[] = [
   {
@@ -38,6 +45,16 @@ const BUILTIN_TOOLS: ToolDescription[] = [
   {
     name: 'sample_ui',
     description: '截图并描述当前 UI',
+  },
+  {
+    name: 'locate_nl',
+    description: '自然语言定位 UI 元素，返回像素坐标',
+    parameters: { phrase: 'string', deepLocate: 'boolean?' },
+  },
+  {
+    name: 'annotate_rects',
+    description: '在当前截图上按像素框绘制红框标签',
+    parameters: { regions: 'AnnotateRegion[]' },
   },
 ];
 
@@ -147,6 +164,44 @@ export class MidsceneExecutor implements ExecutorPort {
           durationMs: Date.now() - startedAt,
         };
       }
+      if (name === 'locate_nl') {
+        const args = request.arguments as
+          | { phrase?: string; deepLocate?: boolean }
+          | undefined;
+        const hit = await this.locate({
+          phrase: args?.phrase ?? '',
+          deepLocate: args?.deepLocate,
+        });
+        return {
+          name,
+          ok: hit.ok,
+          data: hit,
+          durationMs: Date.now() - startedAt,
+          error: hit.ok
+            ? undefined
+            : { code: 'LOCATE_FAILED', message: hit.error ?? 'locate failed' },
+        };
+      }
+      if (name === 'annotate_rects') {
+        const args = request.arguments as AnnotateRequest | undefined;
+        const result = await this.annotate({
+          screenshotBase64: args?.screenshotBase64,
+          regions: args?.regions ?? [],
+          style: args?.style,
+        });
+        return {
+          name,
+          ok: result.ok,
+          data: result,
+          durationMs: Date.now() - startedAt,
+          error: result.ok
+            ? undefined
+            : {
+                code: 'ANNOTATE_FAILED',
+                message: result.error ?? 'annotate failed',
+              },
+        };
+      }
       return {
         name: name ?? '',
         ok: false,
@@ -229,6 +284,83 @@ export class MidsceneExecutor implements ExecutorPort {
           code: 'FREEFORM_FAILED',
           message: error instanceof Error ? error.message : String(error),
         },
+      };
+    }
+  }
+
+  async locate(request: LocateRequest): Promise<LocateHit> {
+    const phrase = request.phrase?.trim();
+    const startedAt = Date.now();
+    if (!phrase) {
+      return {
+        phrase: '',
+        ok: false,
+        error: 'phrase is required',
+        durationMs: 0,
+      };
+    }
+    if (typeof this.agent.aiLocate !== 'function') {
+      return {
+        phrase,
+        ok: false,
+        error: 'aiLocate not available on Midscene agent',
+        durationMs: Date.now() - startedAt,
+      };
+    }
+    const deepLocate =
+      request.deepLocate ?? process.env.EXECUTOR_DEEP_LOCATE !== '0';
+    try {
+      const hit = await this.agent.aiLocate(phrase, { deepLocate });
+      const rect = hit.rect;
+      const area = (rect?.width ?? 0) * (rect?.height ?? 0);
+      const pointFallback = area > 0 && area <= 64;
+      const rectPx = rect
+        ? {
+            left: Math.round(rect.left),
+            top: Math.round(rect.top),
+            width: Math.max(1, Math.round(rect.width)),
+            height: Math.max(1, Math.round(rect.height)),
+          }
+        : undefined;
+      return {
+        phrase,
+        ok: Boolean(rectPx || hit.center),
+        rect: rectPx,
+        rectPx,
+        center: hit.center,
+        dpr: hit.dpr,
+        quality: pointFallback ? 'point_fallback' : 'bbox',
+        deepLocate,
+        durationMs: Date.now() - startedAt,
+      };
+    } catch (error) {
+      return {
+        phrase,
+        ok: false,
+        deepLocate,
+        durationMs: Date.now() - startedAt,
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
+  }
+
+  async annotate(request: AnnotateRequest): Promise<AnnotateResult> {
+    if (!request.regions?.length) {
+      return { ok: false, error: 'regions required' };
+    }
+    try {
+      const base64 =
+        request.screenshotBase64?.replace(/^data:image\/\w+;base64,/, '') ??
+        (await this.getScreenshotBase64());
+      return await annotateScreenshotBase64(
+        base64,
+        request.regions,
+        request.style,
+      );
+    } catch (error) {
+      return {
+        ok: false,
+        error: error instanceof Error ? error.message : String(error),
       };
     }
   }

@@ -5,7 +5,9 @@
   "type": "module",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
-  "exports": { ".": "./src/index.ts" },
+  "exports": {
+    ".": "./src/index.ts"
+  },
   "dependencies": {
     "@midscene/android": "latest",
     "@midscene/core": "latest",
@@ -17,6 +19,7 @@
     "@yume-chan/adb-server-node-tcp": "^2.5.2",
     "@yume-chan/scrcpy": "^2.3.0",
     "@yume-chan/stream-extra": "^2.6.1",
+    "sharp": "^0.34.5",
     "socket.io": "^4.8.3"
   }
 }

@@ -27,6 +27,12 @@ import type {
   ToolDescription,
   ToolResult,
 } from '../models/tool.js';
+import type {
+  AnnotateRequest,
+  AnnotateResult,
+  LocateHit,
+  LocateRequest,
+} from '../models/visual-evidence.js';
 
 /**
  * Executor 领域服务端口。
@@ -74,6 +80,18 @@ export interface ExecutorPort {
   freeformExecute(
     request: FreeformExecuteRequest,
   ): Promise<FreeformExecuteResult>;
+
+  /**
+   * 自然语言定位元素 → 像素坐标（Midscene aiLocate）。
+   * **不**理解 expectation 业务语义。
+   */
+  locate(request: LocateRequest): Promise<LocateHit>;
+
+  /**
+   * 在截图上绘制红框标签。
+   * regions 已是像素坐标；本方法不做 locate。
+   */
+  annotate(request: AnnotateRequest): Promise<AnnotateResult>;
 
   /** 设备/驱动/侧车可达性 */
   health(): Promise<DeviceHealth>;

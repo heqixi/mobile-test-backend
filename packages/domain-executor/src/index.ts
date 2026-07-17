@@ -9,6 +9,8 @@ export * from './models/snapshot.js';
 export * from './models/tool.js';
 export * from './models/freeform.js';
 export * from './models/screenshot.js';
+export * from './models/visual-evidence.js';
 export * from './ports/executor-port.js';
 export * from './service/midscene-executor.js';
 export * from './service/create-android-executor.js';
+export * from './service/annotate-image.js';
