@@ -4,6 +4,7 @@
 
 import type {
   CompileCaseInput,
+  CompileProgressEvent,
   ConnectedCaseDetail,
   ConnectedCompiledBundle,
   LlmInstructionCompilerPort,
@@ -43,27 +44,82 @@ export function buildStepCompileInput(
   };
 }
 
+export interface CompileCoworkCaseOptions {
+  onProgress?: (event: CompileProgressEvent) => void | Promise<void>;
+  /** 每完成一步写回部分 bundle（可选） */
+  onPartial?: (bundle: ConnectedCompiledBundle) => void | Promise<void>;
+}
+
 export async function compileCoworkCase(
   detail: ConnectedCaseDetail,
   compiler: LlmInstructionCompilerPort,
+  options?: CompileCoworkCaseOptions,
 ): Promise<ConnectedCompiledBundle> {
   const steps = splitCoworkSteps(detail.stepsText);
+  const total = steps.length;
   const instructions = [];
   const reports = [];
+  const emit = async (event: CompileProgressEvent) => {
+    await options?.onProgress?.(event);
+  };
 
-  for (const step of steps) {
+  await emit({
+    type: 'start',
+    caseId: detail.caseId,
+    total,
+    steps: steps.map((s) => ({
+      order: s.order,
+      stepId: s.stepId,
+      text: s.text,
+    })),
+  });
+
+  for (let index = 0; index < steps.length; index++) {
+    const step = steps[index]!;
+    await emit({
+      type: 'step_start',
+      caseId: detail.caseId,
+      index,
+      total,
+      stepOrder: step.order,
+      stepId: step.stepId,
+      stepText: step.text,
+    });
+
     const { instruction, report } = await compiler.compile(
       buildStepCompileInput(detail, step, steps.length),
     );
     instructions.push(instruction);
     reports.push(report);
+
+    await emit({
+      type: 'step_done',
+      caseId: detail.caseId,
+      index,
+      total,
+      stepOrder: step.order,
+      instruction,
+      report,
+    });
+
+    const partial: ConnectedCompiledBundle = {
+      caseId: detail.caseId,
+      instructions: [...instructions],
+      reports: [...reports],
+      compiledAt: new Date().toISOString(),
+      sourceTag: index + 1 < total ? 'llm-partial' : 'llm',
+    };
+    await options?.onPartial?.(partial);
   }
 
-  return {
+  const bundle: ConnectedCompiledBundle = {
     caseId: detail.caseId,
     instructions,
     reports,
     compiledAt: new Date().toISOString(),
     sourceTag: 'llm',
   };
+
+  await emit({ type: 'done', caseId: detail.caseId, bundle });
+  return bundle;
 }

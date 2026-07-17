@@ -9,7 +9,7 @@ import { createServer } from 'node:http';
 import { config as loadEnv } from 'dotenv';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { ConnectedCompiledBundle } from '@mtp/domain-case';
+import type { ConnectedCompiledBundle, CompileProgressEvent } from '@mtp/domain-case';
 import {
   CaseDomainError,
   caseLibraryPaths,
@@ -86,7 +86,7 @@ async function main() {
         res.writeHead(204, {
           'Access-Control-Allow-Origin': '*',
           'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type',
+          'Access-Control-Allow-Headers': 'Content-Type, Accept',
         });
         res.end();
         return;
@@ -138,7 +138,52 @@ async function main() {
         const p = matchRoute(caseLibraryRoutePatterns.compile, path);
         if (method === 'POST' && p?.caseId) {
           const detail = await adapter.getCase(p.caseId);
-          const bundle = await compileCoworkCase(detail, llmCompiler);
+          const wantStream =
+            url.searchParams.get('stream') === '1' ||
+            (req.headers.accept ?? '').includes('application/x-ndjson');
+
+          if (wantStream) {
+            res.writeHead(200, {
+              'Content-Type': 'application/x-ndjson; charset=utf-8',
+              'Access-Control-Allow-Origin': '*',
+              'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
+              'Access-Control-Allow-Headers': 'Content-Type, Accept',
+              'Cache-Control': 'no-cache, no-transform',
+              'X-Content-Type-Options': 'nosniff',
+            });
+            const writeEvent = (event: CompileProgressEvent) => {
+              res.write(`${JSON.stringify(event)}\n`);
+            };
+            try {
+              const bundle = await compileCoworkCase(detail, llmCompiler, {
+                onProgress: writeEvent,
+                onPartial: (partial) => adapter.saveCompiled(partial),
+              });
+              await adapter.saveCompiled(bundle);
+            } catch (error) {
+              if (error instanceof CaseDomainError) {
+                writeEvent({
+                  type: 'error',
+                  caseId: p.caseId,
+                  code: error.code,
+                  message: error.message,
+                });
+              } else {
+                writeEvent({
+                  type: 'error',
+                  caseId: p.caseId,
+                  message:
+                    error instanceof Error ? error.message : String(error),
+                });
+              }
+            }
+            res.end();
+            return;
+          }
+
+          const bundle = await compileCoworkCase(detail, llmCompiler, {
+            onPartial: (partial) => adapter.saveCompiled(partial),
+          });
           await adapter.saveCompiled(bundle);
           sendJson(res, 200, bundle);
           return;
