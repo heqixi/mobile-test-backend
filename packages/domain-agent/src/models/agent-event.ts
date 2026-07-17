@@ -9,10 +9,12 @@ import type { UUID } from '@mtp/shared-kernel';
 export type AgentLoopEventType =
   | 'episode.started'
   | 'turn.user'
+  | 'turn.precondition'
   | 'turn.act'
   | 'turn.playground_run'
   | 'turn.tool_result'
   | 'turn.judge'
+  | 'turn.visual_evidence'
   | 'episode.completed'
   | 'episode.failed'
   | 'episode.aborted';
@@ -34,8 +36,16 @@ export interface AgentEpisodeStartedEvent extends AgentLoopEventBase {
 /** 发给 LLM 的本轮 user 消息（含截图附件说明） */
 export interface AgentTurnUserEvent extends AgentLoopEventBase {
   type: 'turn.user';
-  phase: 'act' | 'judge';
+  phase: 'precondition' | 'act' | 'judge';
   text: string;
+}
+
+export interface AgentTurnPreconditionEvent extends AgentLoopEventBase {
+  type: 'turn.precondition';
+  met: boolean;
+  command?: string;
+  evidence: string;
+  reason?: string;
 }
 
 export interface AgentTurnActEvent extends AgentLoopEventBase {
@@ -70,6 +80,32 @@ export interface AgentTurnJudgeEvent extends AgentLoopEventBase {
   reason: string;
   evidence: string;
   continue?: boolean;
+  /** judge 失败归因：precondition 是否仍满足 */
+  preconditionMet?: boolean;
+}
+
+export interface AgentTurnVisualEvidenceEvent extends AgentLoopEventBase {
+  type: 'turn.visual_evidence';
+  evidenceId: string;
+  annotatedDataUrl?: string;
+  screenshotDataUrl?: string;
+  /** 落盘绝对路径（SSE 图过大时用此代替内联图） */
+  localPath?: string;
+  /** file:// 本地 URL */
+  fileUrl?: string;
+  /** 浏览器可加载的 HTTP 图（locate 失败时用 judge 截图） */
+  imageHttpUrl?: string;
+  regions: Array<{
+    id: string;
+    label: string;
+    phrase: string;
+    locateOk: boolean;
+  }>;
+  judgeSatisfied?: boolean;
+  /** satisfied 且非末步 → 前端写入 candidate（待下游验证） */
+  bindAsCandidate?: boolean;
+  /** satisfied 且末步 → 前端直接写入 golden */
+  bindAsGolden?: boolean;
 }
 
 export interface AgentEpisodeCompletedEvent extends AgentLoopEventBase {
@@ -91,10 +127,12 @@ export interface AgentEpisodeAbortedEvent extends AgentLoopEventBase {
 export type AgentLoopEvent =
   | AgentEpisodeStartedEvent
   | AgentTurnUserEvent
+  | AgentTurnPreconditionEvent
   | AgentTurnActEvent
   | AgentTurnPlaygroundRunEvent
   | AgentTurnToolResultEvent
   | AgentTurnJudgeEvent
+  | AgentTurnVisualEvidenceEvent
   | AgentEpisodeCompletedEvent
   | AgentEpisodeFailedEvent
   | AgentEpisodeAbortedEvent;

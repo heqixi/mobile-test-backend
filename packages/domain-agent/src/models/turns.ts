@@ -4,7 +4,7 @@
  * Agent Loop 内的「拍」（Turn）。
  * Agent **只解析信封字段**驱动 Loop，不理解 tool 参数或期望的业务含义。
  *
- * 循环：act → (dispatch) → judge → act → …
+ * 循环：precondition → act → (dispatch) → judge → precondition → …
  */
 
 import type { ISO8601, OpaqueJson, UUID } from '@mtp/shared-kernel';
@@ -18,6 +18,25 @@ export interface ToolCall {
   name: string;
   /** 不透明参数，直传 Executor */
   arguments: OpaqueJson;
+}
+
+/**
+ * LLM Precondition 相位：先确认初始条件，不满足则下发修复 command。
+ *
+ * ```json
+ * { "met": boolean, "command"?: string, "evidence": string, "reason"?: string }
+ * ```
+ * - met=true → 进入 act
+ * - met=false + command → 执行后再次 precondition
+ */
+export interface PreconditionTurn {
+  turnId: UUID;
+  at: ISO8601;
+  raw: OpaqueJson;
+  met: boolean;
+  toolCalls: ToolCall[];
+  evidence: string;
+  reason?: string;
 }
 
 /**
@@ -45,11 +64,12 @@ export interface ActTurn {
  * LLM Judge 相位输出信封。
  *
  * ```json
- * { "satisfied": true, "reason": "...", "continue"?: boolean, "evidence": string }
+ * { "satisfied": true, "reason": "...", "continue"?: boolean, "evidence": string,
+ *   "preconditionMet"?: boolean }
  * ```
  * **是否达成测试期望的权威来源**是 `satisfied`，不是 Agent 本地比较。
- * `evidence` 必填。
- * 失败且 continue≠false → 回到 act。
+ * 失败时须说明是 precondition 不满足还是 expectation 未达成。
+ * 失败且 continue≠false → 回到 precondition（再 act）。
  */
 export interface JudgeTurn {
   turnId: UUID;
@@ -57,10 +77,12 @@ export interface JudgeTurn {
   raw: OpaqueJson;
   satisfied: boolean;
   reason: string;
-  /** 是否继续下一轮 act（仅当 !satisfied 时有意义） */
+  /** 是否继续下一轮（仅当 !satisfied 时有意义） */
   continue?: boolean;
   /** 决策依据（截图/transcript 事实） */
   evidence: string;
+  /** 失败归因：当前屏是否仍满足 preconditions */
+  preconditionMet?: boolean;
 }
 
 /** Executor 返回的工具执行结果拍 */
@@ -77,6 +99,10 @@ export interface ObservationTurn {
   payload: OpaqueJson;
 }
 
+export type PreconditionTurnEntry = {
+  kind: 'precondition';
+  turn: PreconditionTurn;
+};
 export type ActTurnEntry = { kind: 'act'; turn: ActTurn };
 export type JudgeTurnEntry = { kind: 'judge'; turn: JudgeTurn };
 
@@ -84,6 +110,7 @@ export type JudgeTurnEntry = { kind: 'judge'; turn: JudgeTurn };
  * Episode 时间线上的一个事件。
  */
 export type Turn =
+  | PreconditionTurnEntry
   | ActTurnEntry
   | JudgeTurnEntry
   | ToolResultTurn
@@ -93,11 +120,13 @@ export type Turn =
  * Episode / Loop 统一状态。
  *
  * ```
- * open → acting → dispatching? → judging → (acting | completed | failed | aborted)
+ * open → checking_precondition → acting → dispatching? → judging
+ *      → (checking_precondition | completed | failed | aborted)
  * ```
  */
 export type EpisodeStatus =
   | 'open'
+  | 'checking_precondition'
   | 'acting'
   | 'dispatching'
   | 'judging'

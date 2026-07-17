@@ -13,8 +13,8 @@ import type { OpaqueJson, UUID } from '@mtp/shared-kernel';
 import type { Instruction } from '../models/instruction.js';
 import type { Turn } from '../models/turns.js';
 
-/** 外部 LLM 调用相位：act → judge */
-export type LlmPhase = 'act' | 'judge';
+/** 外部 LLM 调用相位：precondition → act → judge */
+export type LlmPhase = 'precondition' | 'act' | 'judge';
 
 export interface ExternalLlmInput {
   episodeId: UUID;

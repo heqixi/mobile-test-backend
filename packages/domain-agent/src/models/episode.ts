@@ -11,13 +11,14 @@ import type {
   ActTurn,
   EpisodeStatus,
   JudgeTurn,
+  PreconditionTurn,
   Turn,
 } from './turns.js';
 
 /**
  * Episode 实体。
  *
- * 时间线：act → tool_result? → judge → …
+ * 时间线：precondition → act → tool_result? → judge → …
  */
 export interface Episode {
   episodeId: UUID;
@@ -28,8 +29,11 @@ export interface Episode {
   /** 本 Episode 对应的任务输入（创建后视为不可变） */
   instruction: Instruction;
 
-  /** 时间线：act → tool_result → … → judge → … */
+  /** 时间线：precondition → act → tool_result → … → judge → … */
   turns: Turn[];
+
+  /** 最近一次 PreconditionTurn */
+  lastPrecondition?: PreconditionTurn;
 
   /** 最近一次 ActTurn 快捷引用 */
   lastAct?: ActTurn;
@@ -41,6 +45,8 @@ export interface Episode {
   round?: number;
   /** 连续 judge 未满足次数（satisfied 时归零） */
   consecutiveJudgeFailures?: number;
+  /** 连续 precondition 未满足且已下发修复的次数 */
+  consecutivePreconditionFailures?: number;
   createdAt: ISO8601;
   updatedAt: ISO8601;
 }
