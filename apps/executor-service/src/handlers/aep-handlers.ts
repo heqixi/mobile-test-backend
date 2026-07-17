@@ -12,6 +12,10 @@ import type {
   InvokeToolHttpRequest,
   SampleHttpRequest,
 } from '../api/aep-http.js';
+import type {
+  AnnotateRequest,
+  LocateRequest,
+} from '@mtp/domain-executor';
 import { fail, ok } from '../api/http-kit.js';
 
 export function createAepHttpHandlers(executor: ExecutorPort): AepHttpHandlers {
@@ -72,6 +76,32 @@ export function createAepHttpHandlers(executor: ExecutorPort): AepHttpHandlers {
 
     async abort() {
       return ok(await executor.abort());
+    },
+
+    async locate(body) {
+      const req = body as Partial<LocateRequest>;
+      if (!req.phrase?.trim()) {
+        return fail(400, { ok: false, error: 'phrase is required' });
+      }
+      const hit = await executor.locate({
+        phrase: req.phrase,
+        deepLocate: req.deepLocate,
+        screenshotBase64: req.screenshotBase64,
+      });
+      return ok(hit, hit.ok ? 200 : 422);
+    },
+
+    async annotate(body) {
+      const req = body as Partial<AnnotateRequest>;
+      if (!Array.isArray(req.regions) || req.regions.length === 0) {
+        return fail(400, { ok: false, error: 'regions required' });
+      }
+      const result = await executor.annotate({
+        screenshotBase64: req.screenshotBase64,
+        regions: req.regions,
+        style: req.style,
+      });
+      return ok(result, result.ok ? 200 : 502);
     },
 
     async health() {

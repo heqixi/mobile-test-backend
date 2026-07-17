@@ -64,6 +64,18 @@ export const executorServiceRouteTable: RouteDescriptor[] = [
     summary: '中止当前操作',
   },
   {
+    method: 'POST',
+    path: AepHttpRoutes.locate,
+    channel: 'aep',
+    summary: '自然语言定位元素（aiLocate）',
+  },
+  {
+    method: 'POST',
+    path: AepHttpRoutes.annotate,
+    channel: 'aep',
+    summary: '截图红框标注',
+  },
+  {
     method: 'GET',
     path: AepHttpRoutes.health,
     channel: 'aep',
@@ -153,6 +165,10 @@ export function createExecutorHttpApi(executor: ExecutorPort): ExecutorHttpApi {
         return aep.bindDevice(body);
       case `POST ${AepHttpRoutes.abort}`:
         return aep.abort(body as never);
+      case `POST ${AepHttpRoutes.locate}`:
+        return aep.locate(body);
+      case `POST ${AepHttpRoutes.annotate}`:
+        return aep.annotate(body);
       default:
         return null;
     }

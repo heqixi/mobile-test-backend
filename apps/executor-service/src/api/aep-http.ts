@@ -29,6 +29,8 @@ export const AepHttpRoutes = {
   bindDevice: '/aep/v0.2/bind-device',
   abort: '/aep/v0.2/abort',
   health: '/aep/v0.2/health',
+  locate: '/aep/v0.2/locate',
+  annotate: '/aep/v0.2/annotate',
 } as const;
 
 export interface ListToolsHttpRequest {
@@ -63,4 +65,6 @@ export interface AepHttpHandlers {
   bindDevice(body: unknown): Promise<HttpResult>;
   abort(body?: AbortHttpRequest): Promise<HttpResult>;
   health(): Promise<HttpResult>;
+  locate(body: unknown): Promise<HttpResult>;
+  annotate(body: unknown): Promise<HttpResult>;
 }
