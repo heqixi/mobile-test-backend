@@ -45,6 +45,8 @@ export const CaseHttpRoutes = {
   connectorDisconnect: '/api/connector/disconnect',
   /** GET — 用例列表 ?q=&path=a/b */
   connectorList: '/api/connector/cases',
+  /** POST — 重排用例并回写业务源 body: { caseIds: string[] } */
+  connectorReorder: '/api/connector/cases/reorder',
   /** GET — 大纲 */
   connectorOutline: '/api/connector/cases/:caseId/outline',
   /** GET — 详情（含 compileInput，不触发编译） */
@@ -57,6 +59,15 @@ export const CaseHttpRoutes = {
    * POST — 业务切步 + LLM 编译并落盘。
    */
   connectorCompile: '/api/connector/cases/:caseId/compile',
+
+  /** GET — Midscene 兼容运行报告列表 */
+  connectorReports: '/api/connector/reports',
+  /** POST — 落盘运行报告 body: { cases, groupName? } */
+  connectorSaveReport: '/api/connector/reports',
+  /** GET — 报告详情 */
+  connectorReport: '/api/connector/reports/:reportId',
+  /** POST — 回写 CSV */
+  connectorReportWriteback: '/api/connector/reports/:reportId/writeback',
 
   startRun: '/api/runs',
   getRun: '/api/runs/:runId',
@@ -134,11 +145,16 @@ export interface CaseHttpHandlers {
   connectorConnect(body: unknown): Promise<HttpResult>;
   connectorDisconnect(): Promise<HttpResult>;
   connectorList(query: { q?: string; path?: string }): Promise<HttpResult>;
+  connectorReorder(body: unknown): Promise<HttpResult>;
   connectorOutline(caseId: string): Promise<HttpResult>;
   connectorCase(caseId: string): Promise<HttpResult>;
   connectorCompiled(caseId: string): Promise<HttpResult>;
   connectorSyncCompiled(caseId: string, body: unknown): Promise<HttpResult>;
   connectorCompile(caseId: string): Promise<HttpResult>;
+  connectorListReports(): Promise<HttpResult>;
+  connectorGetReport(reportId: string): Promise<HttpResult>;
+  connectorSaveReport(body: unknown): Promise<HttpResult>;
+  connectorWritebackReport(reportId: string, body: unknown): Promise<HttpResult>;
 
   startRun(body: unknown): Promise<HttpResult>;
   getRun(runId: UUID): Promise<HttpResult>;

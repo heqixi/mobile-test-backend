@@ -160,6 +160,21 @@ export function createCaseHttpHandlers(deps: {
       }
     },
 
+    async connectorReorder(body) {
+      try {
+        const input = (body ?? {}) as { caseIds?: string[] };
+        if (!Array.isArray(input.caseIds) || input.caseIds.length === 0) {
+          return fail(400, {
+            code: 'INVALID_REORDER',
+            message: 'caseIds array required',
+          });
+        }
+        return ok(await connector.reorderCases(input.caseIds));
+      } catch (error) {
+        return fromDomainError(error);
+      }
+    },
+
     async connectorOutline(caseId) {
       try {
         return ok(await connector.getOutline(caseId));
@@ -210,6 +225,69 @@ export function createCaseHttpHandlers(deps: {
       try {
         const bundle = await connector.compileCase(caseId);
         return ok(bundle);
+      } catch (error) {
+        return fromDomainError(error);
+      }
+    },
+
+    async connectorListReports() {
+      try {
+        return ok(await connector.listRunReports());
+      } catch (error) {
+        return fromDomainError(error);
+      }
+    },
+
+    async connectorGetReport(reportId) {
+      try {
+        const report = await connector.getRunReport(reportId);
+        if (!report) {
+          return fail(404, {
+            code: 'REPORT_NOT_FOUND',
+            message: `Report not found: ${reportId}`,
+          });
+        }
+        return ok(report);
+      } catch (error) {
+        return fromDomainError(error);
+      }
+    },
+
+    async connectorSaveReport(body) {
+      try {
+        const input = (body ?? {}) as {
+          groupName?: string;
+          groupDescription?: string;
+          deviceType?: string;
+          cases?: unknown;
+          reportId?: string;
+          createdAt?: string;
+        };
+        if (!Array.isArray(input.cases)) {
+          return fail(400, {
+            code: 'INVALID_REPORT',
+            message: 'cases array required',
+          });
+        }
+        return ok(
+          await connector.saveRunReport({
+            groupName: input.groupName,
+            groupDescription: input.groupDescription,
+            deviceType: input.deviceType,
+            cases: input.cases as never,
+            reportId: input.reportId,
+            createdAt: input.createdAt,
+          }),
+          201,
+        );
+      } catch (error) {
+        return fromDomainError(error);
+      }
+    },
+
+    async connectorWritebackReport(reportId, body) {
+      try {
+        return ok(await connector.writebackRunReport(reportId, body as never));
       } catch (error) {
         return fromDomainError(error);
       }

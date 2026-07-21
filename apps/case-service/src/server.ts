@@ -49,6 +49,11 @@ export const caseServiceRouteTable: RouteDescriptor[] = [
     summary: '断开用例库',
   },
   { method: 'GET', path: CaseHttpRoutes.connectorList, summary: '外部用例列表' },
+  {
+    method: 'POST',
+    path: CaseHttpRoutes.connectorReorder,
+    summary: '重排用例并回写业务源',
+  },
   { method: 'GET', path: CaseHttpRoutes.connectorOutline, summary: '用例大纲' },
   { method: 'GET', path: CaseHttpRoutes.connectorCase, summary: '用例详情' },
   {
@@ -65,6 +70,26 @@ export const caseServiceRouteTable: RouteDescriptor[] = [
     method: 'POST',
     path: CaseHttpRoutes.connectorCompile,
     summary: '业务切步 + LLM 编译',
+  },
+  {
+    method: 'GET',
+    path: CaseHttpRoutes.connectorReports,
+    summary: '用例库运行报告列表（Midscene）',
+  },
+  {
+    method: 'POST',
+    path: CaseHttpRoutes.connectorSaveReport,
+    summary: '落盘用例库运行报告（Midscene dump）',
+  },
+  {
+    method: 'GET',
+    path: CaseHttpRoutes.connectorReport,
+    summary: '运行报告详情',
+  },
+  {
+    method: 'POST',
+    path: CaseHttpRoutes.connectorReportWriteback,
+    summary: '回写报告结果到 CSV',
   },
   { method: 'POST', path: CaseHttpRoutes.startRun, summary: '创建 CaseRun' },
   { method: 'GET', path: CaseHttpRoutes.getRun, summary: '查询 CaseRun' },
@@ -158,6 +183,15 @@ export function createCaseHttpApi(deps: {
         path: q.get('path') ?? undefined,
       });
     }
+    if (m === 'POST' && path === CaseHttpRoutes.connectorReorder) {
+      return handlers.connectorReorder(body);
+    }
+    if (m === 'GET' && path === CaseHttpRoutes.connectorReports) {
+      return handlers.connectorListReports();
+    }
+    if (m === 'POST' && path === CaseHttpRoutes.connectorSaveReport) {
+      return handlers.connectorSaveReport(body);
+    }
 
     {
       const params = matchRoute(CaseHttpRoutes.compileCase, path);
@@ -169,6 +203,18 @@ export function createCaseHttpApi(deps: {
       const params = matchRoute(CaseHttpRoutes.getCase, path);
       if (m === 'GET' && params?.caseId) {
         return handlers.getCase(params.caseId);
+      }
+    }
+    {
+      const params = matchRoute(CaseHttpRoutes.connectorReportWriteback, path);
+      if (m === 'POST' && params?.reportId) {
+        return handlers.connectorWritebackReport(params.reportId, body);
+      }
+    }
+    {
+      const params = matchRoute(CaseHttpRoutes.connectorReport, path);
+      if (m === 'GET' && params?.reportId) {
+        return handlers.connectorGetReport(params.reportId);
       }
     }
     {
