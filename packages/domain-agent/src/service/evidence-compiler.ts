@@ -17,7 +17,6 @@ import type {
   VisualEvidenceRegion,
 } from '../models/visual-evidence.js';
 import {
-  resolvePreconditionEvidence,
   resolveReferenceEvidence,
 } from '../models/visual-evidence.js';
 
@@ -80,7 +79,6 @@ export function extractLocateTargets(
   };
 
   const expectation = asText(instruction.expectation);
-  const preconditions = asText(instruction.preconditions);
 
   const patterns = [
     /【([^】]+)】/g,
@@ -89,18 +87,14 @@ export function extractLocateTargets(
     /(首页|云盘|应用中心|文档列表)/g,
   ];
 
-  for (const text of [expectation, preconditions]) {
-    if (!text || out.length >= max) continue;
+  // Agent 不可见 preconditions：locate 短语只从 expectation / actions / hints 抽取
+  if (expectation && out.length < max) {
     for (const re of patterns) {
       re.lastIndex = 0;
       let m: RegExpExecArray | null;
-      while ((m = re.exec(text)) && out.length < max) {
+      while ((m = re.exec(expectation)) && out.length < max) {
         const phrase = (m[1] ?? m[0]).trim();
-        push(
-          phrase,
-          phrase,
-          text === expectation ? 'expectation' : 'precondition',
-        );
+        push(phrase, phrase, 'expectation');
       }
     }
   }
@@ -264,24 +258,14 @@ export async function compileVisualEvidence(input: {
   };
 }
 
-/** Precondition 相位：仅上一步 Golden */
+/** @deprecated Agent 不再注入 PreCondition Golden；保留供 Case 链读写兼容 */
 export function formatPreconditionGoldenHint(
-  binding: PreconditionEvidenceBinding | undefined,
+  _binding: PreconditionEvidenceBinding | undefined,
 ): string | undefined {
-  const ref = resolvePreconditionEvidence(binding);
-  if (!ref && !binding) return undefined;
-  return [
-    '## PreCondition Golden (starting-state reference)',
-    binding?.sourceExpectationSnapshot
-      ? `previous expectation (this step should start from): ${binding.sourceExpectationSnapshot}`
-      : undefined,
-    'If CURRENT diverges from this starting UI, restore it before met=true.',
-  ]
-    .filter(Boolean)
-    .join('\n');
+  return undefined;
 }
 
-/** Act / Judge：仅本步 Expectation Golden */
+/** Expectation Golden 软参考（Plan 可选附带） */
 export function formatExpectationGoldenHint(
   binding: ExpectationEvidenceBinding | undefined,
 ): string | undefined {
@@ -298,50 +282,44 @@ export function formatExpectationGoldenHint(
     .join('\n');
 }
 
-/** @deprecated use phase-specific hints */
+/** @deprecated use formatExpectationGoldenHint */
 export function formatGoldenPromptBlock(
   expectationBinding: ExpectationEvidenceBinding | undefined,
-  preconditionBinding?: PreconditionEvidenceBinding | undefined,
+  _preconditionBinding?: PreconditionEvidenceBinding | undefined,
 ): string | undefined {
-  const parts = [
-    formatPreconditionGoldenHint(preconditionBinding),
-    formatExpectationGoldenHint(expectationBinding),
-  ].filter(Boolean);
-  return parts.length ? parts.join('\n') : undefined;
+  return formatExpectationGoldenHint(expectationBinding);
 }
 
-/** @deprecated act no longer mixes both refs */
+/** @deprecated */
 export function formatReferenceCompareActHint(input: {
-  hasPreconditionRef: boolean;
+  hasPreconditionRef?: boolean;
   hasExpectationRef: boolean;
 }): string | undefined {
-  if (!input.hasExpectationRef && !input.hasPreconditionRef) return undefined;
+  if (!input.hasExpectationRef) return undefined;
   return [
-    '## Compare CURRENT vs attached Golden reference(s)',
-    input.hasPreconditionRef
-      ? '- Restore PreCondition Golden starting state if CURRENT diverges.'
-      : undefined,
-    input.hasExpectationRef
-      ? '- Close the gap toward Expectation Golden.'
-      : undefined,
-  ]
-    .filter(Boolean)
-    .join('\n');
+    '## Compare CURRENT vs attached Golden reference',
+    '- Close the gap toward Expectation Golden.',
+  ].join('\n');
 }
 
 export function shouldAttachReferenceImage(input: {
-  phase: 'act' | 'judge';
+  phase?: 'plan' | 'act' | 'judge';
+  /** 上一轮 plan 未 end（未达成）时附带 Expectation Golden */
+  lastPlanEnded?: boolean;
+  consecutiveRecoveryFailures?: number;
+  /** @deprecated */
   lastJudgeSatisfied?: boolean;
+  /** @deprecated */
   consecutiveJudgeFailures?: number;
 }): boolean {
   if (process.env.AGENT_VISUAL_EVIDENCE_ATTACH_IMAGE === '0') return false;
   if (process.env.AGENT_VISUAL_EVIDENCE_ATTACH_IMAGE === '1') {
-    return input.phase === 'act';
+    return true;
   }
-  // 默认：仅 act，且本轮已有 judge 失败时附带历史成功参考图
-  if (input.phase !== 'act') return false;
   if (input.lastJudgeSatisfied === false) return true;
-  return (input.consecutiveJudgeFailures ?? 0) > 0;
+  if ((input.consecutiveJudgeFailures ?? 0) > 0) return true;
+  if (input.lastPlanEnded === false) return true;
+  return (input.consecutiveRecoveryFailures ?? 0) > 0;
 }
 
 export async function loadStoredEvidenceDataUrl(

@@ -1,10 +1,8 @@
 /**
  * @module @mtp/domain-agent/service/phase-llm
  *
- * 相位 LLM：按 phase 分步附带参考图，避免把 PreCondition/Expectation 塞进同一 act 上下文。
- * - precondition → 仅 PreCondition Golden
- * - act → 仅 Expectation Golden（judge 失败后的重试）
- * - judge → 仅 Expectation Golden（软参考）
+ * Plan LLM：附带截图 + 按需 Expectation Golden 参考图。
+ * 不向模型注入 preconditions 文本或 PreCondition Golden。
  */
 
 import type { ExecutorHttpClient } from '../adapters/executor-http.js';
@@ -15,8 +13,6 @@ import {
 import type { AgentLoopEventListener } from '../models/agent-event.js';
 import {
   readExpectationEvidence,
-  readPreconditionEvidence,
-  resolvePreconditionEvidence,
   resolveReferenceEvidence,
 } from '../models/visual-evidence.js';
 import type { LlmPhase } from '../ports/external-llm-port.js';
@@ -25,10 +21,7 @@ import {
   loadStoredEvidenceDataUrl,
   shouldAttachReferenceImage,
 } from './evidence-compiler.js';
-import {
-  baseEvent,
-  type EpisodeRecord,
-} from './episode-record.js';
+import { baseEvent, type EpisodeRecord } from './episode-record.js';
 import {
   buildEpisodeSystemPrompt,
   buildPhaseUserPrompt,
@@ -44,7 +37,7 @@ export interface PhaseLlmDeps {
 export async function askPhaseLlm(
   deps: PhaseLlmDeps,
   rec: EpisodeRecord,
-  phase: LlmPhase,
+  phase: LlmPhase = 'plan',
 ): Promise<string> {
   const { client, executor, openCodeModel, onEvent } = deps;
 
@@ -61,25 +54,21 @@ export async function askPhaseLlm(
   const expectationRef = resolveReferenceEvidence(
     readExpectationEvidence(meta),
   );
-  const preconditionRef = resolvePreconditionEvidence(
-    readPreconditionEvidence(meta),
-  );
 
   const attachImagesOff =
     process.env.AGENT_VISUAL_EVIDENCE_ATTACH_IMAGE === '0';
 
-  let attachPrecondition = false;
   let attachExpectation = false;
   if (!attachImagesOff) {
-    if (phase === 'precondition') {
-      attachPrecondition = Boolean(preconditionRef);
-    } else if (phase === 'act') {
-      attachExpectation = shouldAttachReferenceImage({
-        phase: 'act',
-        lastJudgeSatisfied: rec.episode.lastJudge?.satisfied,
-        consecutiveJudgeFailures: rec.episode.consecutiveJudgeFailures,
-      });
-    } else if (phase === 'judge') {
+    attachExpectation = shouldAttachReferenceImage({
+      phase: 'plan',
+      lastPlanEnded:
+        rec.episode.lastPlan != null
+          ? rec.episode.lastPlan.strategy === 'pass'
+          : undefined,
+      consecutiveRecoveryFailures: rec.episode.consecutiveRecoveryFailures,
+    });
+    if (!attachExpectation && expectationRef && !rec.episode.lastPlan) {
       attachExpectation = Boolean(expectationRef);
     }
   }
@@ -88,28 +77,20 @@ export async function askPhaseLlm(
     attachExpectation && expectationRef
       ? await loadStoredEvidenceDataUrl(expectationRef)
       : undefined;
-  const preconditionDataUrl =
-    attachPrecondition && preconditionRef
-      ? await loadStoredEvidenceDataUrl(preconditionRef)
-      : undefined;
 
   const hasExpectationRef = Boolean(expectationDataUrl);
-  const hasPreconditionRef = Boolean(preconditionDataUrl);
 
   const userText = buildPhaseUserPrompt(
     phase,
     rec.episode.instruction,
     lastToolFromEpisode(rec.episode),
-    { hasExpectationRef, hasPreconditionRef },
+    { hasExpectationRef },
   );
 
   const sseBits = [
     imageDataUrl
       ? '[screenshot attached: device-screen.png]'
       : `[screenshot unavailable: ${shot.error ?? 'unknown'}]`,
-    preconditionDataUrl
-      ? '[reference attached: precondition-reference.png]'
-      : undefined,
     expectationDataUrl
       ? '[reference attached: expectation-reference.png]'
       : undefined,
@@ -119,7 +100,7 @@ export async function askPhaseLlm(
     onEvent?.({
       ...baseEvent(rec),
       type: 'turn.user',
-      phase,
+      phase: 'plan',
       text: `${userText}\n\n${sseBits.join('\n')}`,
     });
   } catch {
@@ -131,12 +112,6 @@ export async function askPhaseLlm(
     : buildEpisodeSystemPrompt(rec.episode.instruction);
 
   const extraImages: Array<{ dataUrl: string; filename: string }> = [];
-  if (preconditionDataUrl) {
-    extraImages.push({
-      dataUrl: preconditionDataUrl,
-      filename: 'precondition-reference.png',
-    });
-  }
   if (expectationDataUrl) {
     extraImages.push({
       dataUrl: expectationDataUrl,
@@ -157,5 +132,32 @@ export async function askPhaseLlm(
     rec.systemPromptSent = true;
   }
 
+  return extractAssistantText(reply);
+}
+
+/**
+ * 同一 Session 内发送校验失败修复 prompt（不再次截图）。
+ */
+export async function askPhaseLlmRepair(
+  deps: PhaseLlmDeps,
+  rec: EpisodeRecord,
+  _phase: LlmPhase,
+  repairText: string,
+): Promise<string> {
+  const { client, openCodeModel, onEvent } = deps;
+  try {
+    onEvent?.({
+      ...baseEvent(rec),
+      type: 'turn.user',
+      phase: 'plan',
+      text: repairText,
+    });
+  } catch {
+    // ignore
+  }
+  const reply = await client.postRound(rec.openCodeSessionId, {
+    text: repairText,
+    model: openCodeModel,
+  });
   return extractAssistantText(reply);
 }

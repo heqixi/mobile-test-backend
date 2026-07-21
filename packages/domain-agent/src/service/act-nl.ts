@@ -65,7 +65,8 @@ export function lastToolFromEpisode(
     | undefined;
   const command =
     (typeof first?.prompt === 'string' && first.prompt.trim()) ||
-    actNlCommand(episode.lastAct?.toolCalls ?? []) ||
+    episode.lastPlan?.command ||
+    actNlCommand(episode.lastPlan?.toolCalls ?? []) ||
     '(unknown)';
   return {
     command,

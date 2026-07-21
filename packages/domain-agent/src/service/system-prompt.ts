@@ -4,25 +4,17 @@
  * Episode Session 首轮注入的统一 SystemPrompt。
  * 后续相位只发本轮 user prompt + 截图。
  *
- * Loop：precondition → act → (dispatch) → judge → precondition → …
+ * Loop：plan ⇄ act → … → end
  *
- * **硬性约定**：每一相位都必须返回 **合法 JSON**，且必须包含
- * 非空字符串字段 `evidence`（基于截图的决策依据）。
- * **Judge**：Instruction.expectation 是判定成功的唯一标准；失败须说明 precondition 是否仍满足。
+ * Agent 可见字段：expectation / actions / hints（不含 preconditions）。
+ * **硬性约定**：每次 Plan 都必须返回合法 JSON，且含非空 `evidence`。
  */
 
 import type { Instruction } from '../models/instruction.js';
 import type { LlmPhase } from '../ports/external-llm-port.js';
-import {
-  readExpectationEvidence,
-  readPreconditionEvidence,
-  resolvePreconditionEvidence,
-  resolveReferenceEvidence,
-} from '../models/visual-evidence.js';
-import {
-  formatExpectationGoldenHint,
-  formatPreconditionGoldenHint,
-} from './evidence-compiler.js';
+import { normalizeLlmPhase } from '../ports/external-llm-port.js';
+import { readExpectationEvidence } from '../models/visual-evidence.js';
+import { formatExpectationGoldenHint } from './evidence-compiler.js';
 
 export function expectationText(instruction: Instruction): string {
   return typeof instruction.expectation === 'string'
@@ -30,19 +22,16 @@ export function expectationText(instruction: Instruction): string {
     : JSON.stringify(instruction.expectation);
 }
 
+/** @deprecated Agent 不再向模型暴露 preconditions */
 export function preconditionsText(
-  instruction: Instruction,
+  _instruction: Instruction,
 ): string | undefined {
-  if (instruction.preconditions == null || instruction.preconditions === '') {
-    return undefined;
-  }
-  return typeof instruction.preconditions === 'string'
-    ? instruction.preconditions
-    : JSON.stringify(instruction.preconditions);
+  return undefined;
 }
 
-export function hasPreconditions(instruction: Instruction): boolean {
-  return Boolean(preconditionsText(instruction)?.trim());
+/** @deprecated Agent 不再使用 preconditions */
+export function hasPreconditions(_instruction: Instruction): boolean {
+  return false;
 }
 
 function listText(items: string[] | undefined): string | undefined {
@@ -50,14 +39,12 @@ function listText(items: string[] | undefined): string | undefined {
   return items.map((h) => `- ${h}`).join('\n');
 }
 
-/** 基础 Instruction 字段（不含 Golden 大段，Golden 按相位注入） */
+/** Agent 可见 Instruction 字段：expectation / actions / hints */
 function instructionCoreBlock(instruction: Instruction): string {
-  const preconditions = preconditionsText(instruction);
   const expectation = expectationText(instruction);
   const actions = listText(instruction.actions);
   const hints = listText(instruction.hints);
   return [
-    preconditions ? `preconditions:\n${preconditions}` : undefined,
     `expectation: ${expectation}`,
     actions ? `actions:\n${actions}` : undefined,
     hints ? `hints:\n${hints}` : undefined,
@@ -77,45 +64,51 @@ Rules for Midscene commands:
 1. Describe visible UI targets using exact labels/positions from actions (or hints) when provided.
 2. One atomic action per command (prefer one click / one type / one swipe).
 3. Do NOT invent tools other than act_nl.
-4. Do NOT claim the expectation is satisfied outside the judge phase.
-5. If hints mention blockers (popup, dialog, overlay, 遮挡, 关闭), clear them BEFORE the main action.
+4. command MUST be a FULL natural-language sentence that names the UI target.
+   - BAD (rejected): "tap", "click", "swipe", "Tab"
+   - GOOD: "点击底部输入框右侧的相机图标按钮"
+   - NEVER put only an action verb in command; always include what/where to act.
 `.trim();
 
-export const ACT_DECISION_CHECKLIST = `
-## Act-phase decision checklist (MANDATORY — follow in order)
+export const PLAN_STRATEGY_GUIDE = `
+## Plan strategy matrix (MANDATORY)
 
-Preconditions were already verified in the precondition phase. Do NOT re-check or restore preconditions here.
+Business 2×2 (pick exactly ONE):
 
-1. **Blockers first**
-   - Clear popups/overlays that cover the action target when hints mention 遮挡/关闭.
+|              | Continue (still operate) | Terminate (test verdict) |
+|--------------|--------------------------|--------------------------|
+| On track / undecided | strategy="act"     | strategy="pass"          |
+| Off track / disproved | strategy="recovery"| strategy="fail"         |
 
-2. **Expectation Golden (when attached)**
-   - Compare CURRENT vs Expectation Golden and close the gap toward the expected outcome.
+| strategy   | when | command |
+|------------|------|---------|
+| act        | Expectation still undecided; take one step toward it via actions | required |
+| recovery   | Last step went wrong / last_tool failed; correct with one action | required |
+| pass       | You can AFFIRM expectation IS satisfied on CURRENT | omit |
+| fail       | You can AFFIRM expectation is NOT met or is contradicted | omit |
 
-3. **Actions as the script**
-   - Execute the earliest still-applicable action; use exact labels from actions.
-   - If actions are empty, fall back to hints.
+Decision order:
+1. If you can affirm expectation IS met → strategy="pass".
+2. Else if you can affirm expectation is unmet / contradicted (wrong final UI, negative expectation broken, actions exhausted with wrong state) → strategy="fail".
+3. Else if last_tool failed or CURRENT clearly diverged → strategy="recovery" + corrective command.
+4. Else clear blockers if hints mention 遮挡/关闭, then strategy="act" + next atomic action from actions.
+5. Match expectation by UI role / screen outcome, not exact label equality.
 
-4. **When to next="judge"**
-   - Only when blockers are gone and you believe expectation may already be visible, or after the planned action just ran (see last_tool).
-`.trim();
-
-export const JUDGE_SEMANTIC_MATCH = `
-## Judge semantic matching (MANDATORY)
-
-Judge by **UI role + screen outcome**, NOT exact string equality of control labels.
-If CURRENT shows the same screen type and control roles as the expectation, label/locale differences are OK.
-Fail only when the screen type is wrong or the required outcome/control role is clearly absent.
+Rules:
+- ActResult success/failure is NOT the test verdict. Only pass/fail judge expectation.
+- Do NOT use strategy="fail" merely because last_tool.ok=false — recover or retry first when still undecided.
+- evidence MUST cite CURRENT (and last_tool if relevant) and WHY pass vs fail vs continue.
+- You only see expectation, actions, and hints — do NOT invent "preconditions".
 `.trim();
 
 export const JSON_EVIDENCE_RULES = `
-## Output format (MANDATORY for EVERY phase)
+## Output format (MANDATORY)
 
 1. Respond with ONLY one JSON object. No markdown fences, no prose outside JSON.
-2. The JSON MUST include a non-empty string field "evidence".
-3. "evidence" must explain WHY you made this decision, citing what you see on the screenshot
-   and (when present) the last tool command/result in this user message.
-4. If you cannot see enough, still return JSON and put that limitation into "evidence".
+2. Schema: {"strategy":"act"|"recovery"|"pass"|"fail","command"?,"evidence": string}
+3. "evidence" is REQUIRED: cite screenshot / last_tool facts AND why you chose this strategy.
+   Do NOT add a separate "reason" field.
+4. If you cannot see enough, still return JSON and put that limitation into "evidence" (prefer act/recovery over guessing pass/fail).
 `.trim();
 
 /**
@@ -123,54 +116,25 @@ export const JSON_EVIDENCE_RULES = `
  */
 export function buildEpisodeSystemPrompt(instruction: Instruction): string {
   const expectation = expectationText(instruction);
-  const preconditions = preconditionsText(instruction);
   const actions = listText(instruction.actions);
   const hints = listText(instruction.hints);
 
   return [
-    'You are a mobile UI test Agent. Loop phases (in order):',
-    'precondition → act → (optional tool) → judge → precondition → …',
-    'Never skip precondition when the Instruction has preconditions text.',
-    'Each user message is ONE phase with the latest device screenshot.',
+    'You are a mobile UI test Agent.',
+    'Loop: plan → (optional act on device) → plan → … until strategy="pass" or "fail" (or guardrail stop).',
+    'Each user message is ONE plan turn with the latest device screenshot.',
     'When a prior Midscene act ran, that user message also includes last_tool.',
     'You MUST use the screenshot as primary evidence. Do NOT claim you cannot see images.',
+    'Instruction fields available to you: expectation, actions, hints only.',
     '',
     JSON_EVIDENCE_RULES,
     '',
-    '## Phase protocols',
-    '',
-    '### precondition',
-    'ONLY check whether Instruction preconditions hold on CURRENT screenshot.',
-    'Do NOT pursue expectation or execute the main actions list here.',
-    'JSON schema:',
-    '{"met": boolean, "command"?: string, "reason"?: string, "evidence": string}',
-    '- met=true → go to act (omit command).',
-    '- met=false → command MUST be one Midscene action that restores/satisfies preconditions; reason explains what is missing.',
-    '- If a PreCondition Golden image is attached, use it as the starting-state reference.',
-    '',
-    '### act',
-    'Preconditions are already met. Choose:',
-    '- next="act": one Midscene command toward expectation / actions',
-    '- next="judge": ready to evaluate expectation',
-    'JSON schema:',
-    '{"next": "act" | "judge", "command"?: string, "evidence": string}',
-    '',
-    ACT_DECISION_CHECKLIST,
-    '',
-    '### judge',
-    'Success criterion: Instruction expectation on CURRENT screenshot.',
-    'JSON schema:',
-    '{"satisfied": boolean, "reason": string, "continue"?: boolean, "evidence": string, "preconditionMet"?: boolean}',
-    '- On failure, reason/evidence MUST say whether preconditions still hold (set preconditionMet true/false) and what specifically is wrong for expectation.',
-    '- satisfied=false and continue!=false → loop returns to precondition (not directly to act).',
-    '',
-    JUDGE_SEMANTIC_MATCH,
+    PLAN_STRATEGY_GUIDE,
     '',
     MIDSCENE_ACT_NL_GUIDE,
     '',
     '## Current Instruction (fixed for this session)',
     `expectation: ${expectation}`,
-    preconditions ? `preconditions: ${preconditions}` : undefined,
     actions ? `actions:\n${actions}` : undefined,
     hints ? `hints:\n${hints}` : undefined,
   ]
@@ -187,17 +151,17 @@ export interface LastToolContext {
 }
 
 /**
- * 本轮 user prompt：按相位注入不同参考，避免把所有 Golden 塞进同一上下文。
+ * 本轮 Plan user prompt。
  */
 export function buildPhaseUserPrompt(
   phase: LlmPhase,
   instruction: Instruction,
   lastTool?: LastToolContext,
   options?: {
-    hasPreconditionRef?: boolean;
     hasExpectationRef?: boolean;
   },
 ): string {
+  void normalizeLlmPhase(phase);
   const core = instructionCoreBlock(instruction);
   const lastToolBlock = lastTool
     ? [
@@ -217,93 +181,42 @@ export function buildPhaseUserPrompt(
     : undefined;
 
   const promptOff = process.env.AGENT_VISUAL_EVIDENCE_PROMPT === '0';
-
-  if (phase === 'precondition') {
-    const goldenHint =
-      !promptOff && options?.hasPreconditionRef
-        ? formatPreconditionGoldenHint(
-            readPreconditionEvidence(instruction.metadata),
-          )
-        : !promptOff
-          ? formatPreconditionGoldenHint(
-              readPreconditionEvidence(instruction.metadata),
-            )
-          : undefined;
-    return [
-      'Phase: precondition.',
-      'Return ONLY JSON: {"met":boolean,"command"?,"reason"?,"evidence"} — evidence is REQUIRED.',
-      'Check ONLY whether preconditions hold on CURRENT. Do not chase expectation.',
-      'If unmet, command must restore the precondition state (one atomic Midscene action).',
-      '',
-      'Current Instruction:',
-      core,
-      goldenHint,
-      lastToolBlock,
-      options?.hasPreconditionRef
-        ? 'Images: device-screen.png = CURRENT; precondition-reference.png = historical PreCondition Golden.'
-        : 'A device screenshot is attached as an image file part — use it as primary observation.',
-    ]
-      .filter(Boolean)
-      .join('\n');
-  }
-
-  if (phase === 'act') {
-    const goldenHint =
-      !promptOff && options?.hasExpectationRef
-        ? formatExpectationGoldenHint(
-            readExpectationEvidence(instruction.metadata),
-          )
-        : undefined;
-    return [
-      'Phase: act.',
-      'Return ONLY JSON: {"next":"act"|"judge","command"?,"evidence"} — evidence is REQUIRED.',
-      'Preconditions were already verified. Focus on actions toward expectation.',
-      'Decision order: (1) clear blockers if needed (2) if Expectation Golden attached, close the gap (3) execute earliest applicable action.',
-      '',
-      'Current Instruction:',
-      core,
-      goldenHint,
-      lastToolBlock,
-      options?.hasExpectationRef
-        ? 'Images: device-screen.png = CURRENT; expectation-reference.png = historical Expectation Golden.'
-        : 'A device screenshot is attached as an image file part — use it as primary observation.',
-    ]
-      .filter(Boolean)
-      .join('\n');
-  }
-
-  // judge
-  return [
-    'Phase: judge.',
-    'Return ONLY JSON: {"satisfied","reason","continue?","evidence","preconditionMet?"} — evidence is REQUIRED.',
-    'Primary criterion: expectation. On failure you MUST set preconditionMet and explain:',
-    '- if preconditionMet=false: what precondition is missing (be specific)',
-    '- if preconditionMet=true: what expectation outcome is missing (be specific)',
-    'Match by UI role / screen outcome; different labels for the same control role are OK.',
-    '',
-    'Current Instruction:',
-    core,
-    !promptOff && resolveReferenceEvidence(readExpectationEvidence(instruction.metadata))
+  const expHint =
+    !promptOff
       ? formatExpectationGoldenHint(
           readExpectationEvidence(instruction.metadata),
         )
-      : undefined,
+      : undefined;
+
+  const imageLine = options?.hasExpectationRef
+    ? 'Images: device-screen.png = CURRENT; expectation-reference.png = Expectation Golden.'
+    : 'A device screenshot is attached as an image file part — use it as primary observation.';
+
+  return [
+    'Phase: plan.',
+    'Return ONLY JSON: {"strategy":"act"|"recovery"|"pass"|"fail","command"?,"evidence"} — evidence is REQUIRED.',
+    'Pick strategy from the matrix; when strategy is act or recovery, command MUST name the UI target (never bare "tap"/"click").',
+    '',
+    'Current Instruction:',
+    core,
+    expHint,
     lastToolBlock,
-    options?.hasExpectationRef
-      ? 'Images: device-screen.png = CURRENT; expectation-reference.png = historical Expectation Golden (soft reference).'
-      : 'A device screenshot is attached as an image file part — use it as primary observation.',
+    imageLine,
   ]
     .filter(Boolean)
     .join('\n');
 }
 
-/** @deprecated kept for callers that only need a boolean */
+/** @deprecated Agent 不再使用 PreCondition Golden */
 export function instructionHasPreconditionGolden(
-  instruction: Instruction,
+  _instruction: Instruction,
 ): boolean {
-  return Boolean(
-    resolvePreconditionEvidence(
-      readPreconditionEvidence(instruction.metadata),
-    ),
-  );
+  return false;
 }
+
+/** @deprecated */
+export const ACT_DECISION_CHECKLIST = PLAN_STRATEGY_GUIDE;
+/** @deprecated */
+export const JUDGE_SEMANTIC_MATCH = `
+Match by UI role / screen outcome; different labels for the same control role are OK.
+`.trim();

@@ -25,8 +25,10 @@ export interface EpisodeRecord {
   lastScreenshotBase64?: string;
   /** 最近一次 Visual Evidence */
   lastVisualEvidence?: VisualEvidence;
-  /** 当前 dispatch 完成后回到哪一相位 */
-  dispatchOrigin?: 'precondition' | 'act';
+  /** Plan 选出的待执行 command */
+  pendingCommand?: string;
+  /** 本次 act 的意图 */
+  planIntent?: 'act' | 'recovery';
 }
 
 export function nowIso(): string {
@@ -85,18 +87,19 @@ export function baseEvent(
 }
 
 export function toInstructionResult(rec: EpisodeRecord): InstructionResult {
-  const judge = rec.episode.lastJudge;
+  const plan = rec.episode.lastPlan;
   const terminal =
     rec.episode.status === 'completed'
       ? 'completed'
       : rec.episode.status === 'aborted'
         ? 'aborted'
         : 'failed';
+  const satisfied = plan?.strategy === 'pass';
   return {
     episodeId: rec.episode.episodeId,
     instructionId: rec.episode.instruction.instructionId,
-    satisfied: judge?.satisfied ?? false,
-    reason: judge?.reason ?? `episode ${rec.episode.status}`,
+    satisfied,
+    reason: plan?.evidence ?? `episode ${rec.episode.status}`,
     status: terminal,
     turns: structuredClone(rec.episode.turns),
     visualEvidence: rec.lastVisualEvidence
