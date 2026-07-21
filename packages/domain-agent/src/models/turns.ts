@@ -4,13 +4,13 @@
  * Agent Loop 内的「拍」（Turn）。
  * Agent **只解析信封字段**驱动 Loop，不理解 tool 参数或期望的业务含义。
  *
- * 循环：precondition → act → (dispatch) → judge → precondition → …
+ * 循环：plan → (act) → plan → … → completed | failed | aborted
  */
 
 import type { ISO8601, OpaqueJson, UUID } from '@mtp/shared-kernel';
 
 /**
- * 单次工具调用（ActTurn 信封内一项）。
+ * 单次工具调用（PlanTurn 选中 act/recovery 时的信封项）。
  * `arguments` 整包转发 Executor，Agent 不校验业务字段。
  */
 export interface ToolCall {
@@ -21,68 +21,32 @@ export interface ToolCall {
 }
 
 /**
- * LLM Precondition 相位：先确认初始条件，不满足则下发修复 command。
- *
- * ```json
- * { "met": boolean, "command"?: string, "evidence": string, "reason"?: string }
- * ```
- * - met=true → 进入 act
- * - met=false + command → 执行后再次 precondition
+ * Plan 业务策略（2×2）+ 元策略 illegal：
+ * - act：继续向 expectation 推进一步
+ * - recovery：上一步走偏 / last act 失败，纠偏
+ * - pass：肯定 expectation 已满足 → 用例通过
+ * - fail：肯定 expectation 未满足或已被违背 → 用例失败
+ * - illegal：信封/命令不合法（元策略，相位内 repair）
  */
-export interface PreconditionTurn {
-  turnId: UUID;
-  at: ISO8601;
-  raw: OpaqueJson;
-  met: boolean;
-  toolCalls: ToolCall[];
-  evidence: string;
-  reason?: string;
-}
+export type PlanStrategy = 'act' | 'recovery' | 'pass' | 'fail' | 'illegal';
 
 /**
- * LLM Act 相位输出信封。
+ * LLM Plan 相位输出信封。
  *
  * ```json
- * { "next": "act" | "judge", "command"?: string, "evidence": string }
+ * { "strategy": "act"|"recovery"|"pass"|"fail", "command"?: string, "evidence": string }
  * ```
- * - next="act"：下发 Midscene command（规范为 act_nl toolCall）
- * - next="judge"：本轮不调工具，直接进入 judge
- * `evidence` 必填。
+ * `evidence` 同时承载事实与归因（不再另设 reason）。
  */
-export interface ActTurn {
+export interface PlanTurn {
   turnId: UUID;
   at: ISO8601;
   raw: OpaqueJson;
-  /** act = 执行 command；judge = 跳过工具进入 judge */
-  next: 'act' | 'judge';
+  strategy: PlanStrategy;
+  /** act/recovery 时规范为 act_nl toolCall */
   toolCalls: ToolCall[];
-  /** 决策依据（为何下发该 command / 为何直接 judge） */
+  command?: string;
   evidence: string;
-}
-
-/**
- * LLM Judge 相位输出信封。
- *
- * ```json
- * { "satisfied": true, "reason": "...", "continue"?: boolean, "evidence": string,
- *   "preconditionMet"?: boolean }
- * ```
- * **是否达成测试期望的权威来源**是 `satisfied`，不是 Agent 本地比较。
- * 失败时须说明是 precondition 不满足还是 expectation 未达成。
- * 失败且 continue≠false → 回到 precondition（再 act）。
- */
-export interface JudgeTurn {
-  turnId: UUID;
-  at: ISO8601;
-  raw: OpaqueJson;
-  satisfied: boolean;
-  reason: string;
-  /** 是否继续下一轮（仅当 !satisfied 时有意义） */
-  continue?: boolean;
-  /** 决策依据（截图/transcript 事实） */
-  evidence: string;
-  /** 失败归因：当前屏是否仍满足 preconditions */
-  preconditionMet?: boolean;
 }
 
 /** Executor 返回的工具执行结果拍 */
@@ -99,37 +63,57 @@ export interface ObservationTurn {
   payload: OpaqueJson;
 }
 
-export type PreconditionTurnEntry = {
-  kind: 'precondition';
-  turn: PreconditionTurn;
-};
-export type ActTurnEntry = { kind: 'act'; turn: ActTurn };
-export type JudgeTurnEntry = { kind: 'judge'; turn: JudgeTurn };
+export type PlanTurnEntry = { kind: 'plan'; turn: PlanTurn };
 
 /**
  * Episode 时间线上的一个事件。
  */
-export type Turn =
-  | PreconditionTurnEntry
-  | ActTurnEntry
-  | JudgeTurnEntry
-  | ToolResultTurn
-  | ObservationTurn;
+export type Turn = PlanTurnEntry | ToolResultTurn | ObservationTurn;
 
 /**
- * Episode / Loop 统一状态。
+ * Episode / Loop 统一状态（控制态）。
  *
  * ```
- * open → checking_precondition → acting → dispatching? → judging
- *      → (checking_precondition | completed | failed | aborted)
+ * open → plan ⇄ act → (plan | completed | failed | aborted)
  * ```
  */
 export type EpisodeStatus =
   | 'open'
-  | 'checking_precondition'
-  | 'acting'
-  | 'dispatching'
-  | 'judging'
+  | 'plan'
+  | 'act'
   | 'completed'
   | 'failed'
   | 'aborted';
+
+/** @deprecated 兼容旧 transcript；新 Loop 不再写入 */
+export type PreconditionTurn = {
+  turnId: UUID;
+  at: ISO8601;
+  raw: OpaqueJson;
+  met: boolean;
+  toolCalls: ToolCall[];
+  evidence: string;
+  reason?: string;
+};
+
+/** @deprecated 兼容旧 transcript；新 Loop 不再写入 */
+export type ActTurn = {
+  turnId: UUID;
+  at: ISO8601;
+  raw: OpaqueJson;
+  next: 'act' | 'judge';
+  toolCalls: ToolCall[];
+  evidence: string;
+};
+
+/** @deprecated 兼容旧 transcript；新 Loop 不再写入 */
+export type JudgeTurn = {
+  turnId: UUID;
+  at: ISO8601;
+  raw: OpaqueJson;
+  satisfied: boolean;
+  reason: string;
+  continue?: boolean;
+  evidence: string;
+  preconditionMet?: boolean;
+};

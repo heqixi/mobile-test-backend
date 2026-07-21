@@ -2,18 +2,18 @@
  * @module @mtp/domain-agent/models/agent-event
  *
  * Agent Loop 运行时事件（供 SSE 推到前端对话流）。
+ * Plan ⇄ Act：turn.plan / turn.playground_run / turn.tool_result。
  */
 
 import type { UUID } from '@mtp/shared-kernel';
+import type { PlanStrategy } from './turns.js';
 
 export type AgentLoopEventType =
   | 'episode.started'
   | 'turn.user'
-  | 'turn.precondition'
-  | 'turn.act'
+  | 'turn.plan'
   | 'turn.playground_run'
   | 'turn.tool_result'
-  | 'turn.judge'
   | 'turn.visual_evidence'
   | 'episode.completed'
   | 'episode.failed'
@@ -36,21 +36,14 @@ export interface AgentEpisodeStartedEvent extends AgentLoopEventBase {
 /** 发给 LLM 的本轮 user 消息（含截图附件说明） */
 export interface AgentTurnUserEvent extends AgentLoopEventBase {
   type: 'turn.user';
-  phase: 'precondition' | 'act' | 'judge';
+  phase: 'plan';
   text: string;
 }
 
-export interface AgentTurnPreconditionEvent extends AgentLoopEventBase {
-  type: 'turn.precondition';
-  met: boolean;
-  command?: string;
-  evidence: string;
-  reason?: string;
-}
-
-export interface AgentTurnActEvent extends AgentLoopEventBase {
-  type: 'turn.act';
-  next: 'act' | 'judge';
+/** Plan 策略决策 */
+export interface AgentTurnPlanEvent extends AgentLoopEventBase {
+  type: 'turn.plan';
+  strategy: PlanStrategy;
   command?: string;
   evidence: string;
 }
@@ -74,16 +67,6 @@ export interface AgentTurnToolResultEvent extends AgentLoopEventBase {
   resultPreview?: string;
 }
 
-export interface AgentTurnJudgeEvent extends AgentLoopEventBase {
-  type: 'turn.judge';
-  satisfied: boolean;
-  reason: string;
-  evidence: string;
-  continue?: boolean;
-  /** judge 失败归因：precondition 是否仍满足 */
-  preconditionMet?: boolean;
-}
-
 export interface AgentTurnVisualEvidenceEvent extends AgentLoopEventBase {
   type: 'turn.visual_evidence';
   evidenceId: string;
@@ -93,7 +76,7 @@ export interface AgentTurnVisualEvidenceEvent extends AgentLoopEventBase {
   localPath?: string;
   /** file:// 本地 URL */
   fileUrl?: string;
-  /** 浏览器可加载的 HTTP 图（locate 失败时用 judge 截图） */
+  /** 浏览器可加载的 HTTP 图 */
   imageHttpUrl?: string;
   regions: Array<{
     id: string;
@@ -101,7 +84,8 @@ export interface AgentTurnVisualEvidenceEvent extends AgentLoopEventBase {
     phrase: string;
     locateOk: boolean;
   }>;
-  judgeSatisfied?: boolean;
+  /** Plan pass 时为 true */
+  planPassed?: boolean;
   /** satisfied 且非末步 → 前端写入 candidate（待下游验证） */
   bindAsCandidate?: boolean;
   /** satisfied 且末步 → 前端直接写入 golden */
@@ -127,11 +111,9 @@ export interface AgentEpisodeAbortedEvent extends AgentLoopEventBase {
 export type AgentLoopEvent =
   | AgentEpisodeStartedEvent
   | AgentTurnUserEvent
-  | AgentTurnPreconditionEvent
-  | AgentTurnActEvent
+  | AgentTurnPlanEvent
   | AgentTurnPlaygroundRunEvent
   | AgentTurnToolResultEvent
-  | AgentTurnJudgeEvent
   | AgentTurnVisualEvidenceEvent
   | AgentEpisodeCompletedEvent
   | AgentEpisodeFailedEvent

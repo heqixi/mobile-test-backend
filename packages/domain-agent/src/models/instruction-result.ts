@@ -19,7 +19,7 @@ export type InstructionResultStatus =
 /**
  * `run_instruction` 的返回值。
  *
- * `satisfied` / `reason` 来自最后一次 JudgeTurn（或 Loop 失败时的兜底说明）。
+ * `satisfied` / `reason` 来自最后一次 PlanTurn（strategy=pass|fail 的 evidence；或护栏失败兜底）。
  */
 export interface InstructionResult {
   episodeId: UUID;
@@ -27,11 +27,11 @@ export interface InstructionResult {
 
   /**
    * 期望是否达成。
-   * **权威来自 LLM Judge**，不是 Agent 本地判定。
+   * **权威来自 LLM Plan strategy=pass**（fail → false），不是 Agent 本地判定。
    */
   satisfied: boolean;
 
-  /** Judge 给出的自然语言原因 */
+  /** Plan evidence（事实 + 归因） */
   reason: string;
 
   status: InstructionResultStatus;

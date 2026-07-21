@@ -7,18 +7,12 @@
 
 import type { ISO8601, UUID } from '@mtp/shared-kernel';
 import type { Instruction } from './instruction.js';
-import type {
-  ActTurn,
-  EpisodeStatus,
-  JudgeTurn,
-  PreconditionTurn,
-  Turn,
-} from './turns.js';
+import type { EpisodeStatus, PlanTurn, Turn } from './turns.js';
 
 /**
  * Episode 实体。
  *
- * 时间线：precondition → act → tool_result? → judge → …
+ * 时间线：plan → tool_result? → plan → … → terminal
  */
 export interface Episode {
   episodeId: UUID;
@@ -29,24 +23,19 @@ export interface Episode {
   /** 本 Episode 对应的任务输入（创建后视为不可变） */
   instruction: Instruction;
 
-  /** 时间线：precondition → act → tool_result → … → judge → … */
+  /** 时间线：plan → tool_result → … */
   turns: Turn[];
 
-  /** 最近一次 PreconditionTurn */
-  lastPrecondition?: PreconditionTurn;
+  /** 最近一次 PlanTurn */
+  lastPlan?: PlanTurn;
 
-  /** 最近一次 ActTurn 快捷引用 */
-  lastAct?: ActTurn;
-
-  /** 最近一次 JudgeTurn 快捷引用 */
-  lastJudge?: JudgeTurn;
-
-  /** 已完成的 act→judge 轮次计数 */
+  /** 已完成的 plan 轮次计数（每次落盘 PlanTurn 且非纯 illegal-repair 时 +1） */
   round?: number;
-  /** 连续 judge 未满足次数（satisfied 时归零） */
-  consecutiveJudgeFailures?: number;
-  /** 连续 precondition 未满足且已下发修复的次数 */
-  consecutivePreconditionFailures?: number;
+  /** 连续 recovery 次数（strategy=act|pass|fail 时归零） */
+  consecutiveRecoveryFailures?: number;
+  /** 连续 Act 执行失败次数（success 时归零） */
+  consecutiveActFailures?: number;
+
   createdAt: ISO8601;
   updatedAt: ISO8601;
 }

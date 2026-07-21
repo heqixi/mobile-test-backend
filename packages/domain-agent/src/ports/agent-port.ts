@@ -33,24 +33,23 @@ export interface AgentPort {
   runInstruction(instruction: Instruction): Promise<InstructionResult>;
 
   /**
-   * 推进 Loop 一拍（act → judge）：
-   * - acting：askLlm(act) → next=act 则 dispatch；next=judge 则进入 judging
-   * - dispatching：freeform act_nl → judging
-   * - judging：askLlm(judge) → satisfied 则 completed，否则回到 acting
+   * 推进 Loop 一拍：
+   * - plan：askLlm(plan) → act|recovery 进 act；pass → completed；fail → failed
+   * - act：执行 pendingCommand → 回到 plan
    */
   advance(episodeId: UUID): Promise<Episode>;
 
   /**
-   * 显式请求外部 LLM 一次（act | judge）。
-   * 写入 ActTurn / JudgeTurn 到 Episode.turns。
+   * 显式请求外部 LLM 一次（统一 plan；旧 phase 名作别名）。
+   * 写入 PlanTurn 到 Episode.turns。
    */
   askLlm(episodeId: UUID, phase: LlmPhase): Promise<Episode>;
 
   /**
-   * 执行 ActTurn 中的 tool_calls，经 AEP 转发 Executor。
+   * 执行 pendingCommand / tool_calls，经 AEP 转发 Executor。
    * 结果以 tool_result Turn 追加到 Episode。
    *
-   * @param toolCalls - 可选；缺省时使用 lastAct.toolCalls
+   * @param toolCalls - 可选；缺省时使用 pendingCommand / lastPlan.toolCalls
    */
   dispatchTools(episodeId: UUID, toolCalls?: OpaqueJson): Promise<Episode>;
 

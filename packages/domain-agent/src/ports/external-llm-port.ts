@@ -1,28 +1,16 @@
 /**
  * @module @mtp/domain-agent/ports/external-llm-port
  *
- * 外部 LLM Agent 端口（OpenCode / Codex / 其它）。
- *
- * **业务推理全部在外部**；Agent 域只负责：
- * 1. 组装 transcript + Instruction 发给外部 LLM
- * 2. 接收 OpaqueJson 原始返回
- * 3. 按信封约定解析为 ActTurn / JudgeTurn
+ * 外部 LLM 相位端口（OpenCode 等）。
  */
 
-import type { OpaqueJson, UUID } from '@mtp/shared-kernel';
-import type { Instruction } from '../models/instruction.js';
-import type { Turn } from '../models/turns.js';
+/** Loop 对外相位；统一为 plan，旧名作别名 */
+export type LlmPhase = 'plan' | 'precondition' | 'act' | 'judge';
 
-/** 外部 LLM 调用相位：precondition → act → judge */
-export type LlmPhase = 'precondition' | 'act' | 'judge';
-
-export interface ExternalLlmInput {
-  episodeId: UUID;
-  phase: LlmPhase;
-  instruction: Instruction;
-  turns: Turn[];
+export function normalizeLlmPhase(phase: LlmPhase): 'plan' {
+  return 'plan';
 }
 
-export interface ExternalLlmAgentPort {
-  complete(input: ExternalLlmInput): Promise<OpaqueJson>;
+export interface ExternalLlmPort {
+  phase: LlmPhase;
 }
