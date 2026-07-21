@@ -1,0 +1,13 @@
+import type { ToolDefaults } from './tool-defaults';
+import type { ActionSpaceItem, BaseAgent, ToolCliMetadata, ToolDefinition, ToolSchema } from './types';
+import { composeUserPrompt } from './user-prompt';
+export { composeUserPrompt };
+/**
+ * Converts DeviceAction from actionSpace into ToolDefinition.
+ * This is the core logic that removes need for hardcoded tool definitions
+ */
+export declare function generateToolsFromActionSpace(actionSpace: ActionSpaceItem[], getAgent: (args?: Record<string, unknown>) => Promise<BaseAgent>, sanitizeArgs?: (args: Record<string, unknown>) => Record<string, unknown>, initArgSchema?: ToolSchema, initArgCliMetadata?: ToolCliMetadata, toolDefaults?: ToolDefaults): ToolDefinition[];
+/**
+ * Generate common tools (screenshot, act)
+ */
+export declare function generateCommonTools(getAgent: (args?: Record<string, unknown>) => Promise<BaseAgent>, initArgSchema?: ToolSchema, initArgCliMetadata?: ToolCliMetadata, toolDefaults?: ToolDefaults): ToolDefinition[];

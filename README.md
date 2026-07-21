@@ -37,6 +37,8 @@ npm run executor:serve
 - `ANDROID_SKIP_LAUNCH=1` — 不自动 launch App
 - `MIDSCENE_PLAYGROUND=0` / `MIDSCENE_SCRCPY=0` — 关闭侧车
 - `MIDSCENE_REPLANNING_CYCLE_LIMIT` — `aiAct` 重规划上限（默认 `5`）
+- `MIDSCENE_AI_ACT_MAX_ACTIONS` — 每次 `aiAct` 最多执行的设备操作数（可选；不设则不限制）
+- 本地 Midscene 产物在 `vendor/midscene/`（随仓库提交）。从 sibling `../midscene` 刷新：`npm run sync:midscene`，再 `npm run link:midscene`（或 `npm install`）
 
 ## Agent / Case
 

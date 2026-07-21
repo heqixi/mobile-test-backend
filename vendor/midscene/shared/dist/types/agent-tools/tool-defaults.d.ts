@@ -1,0 +1,63 @@
+/**
+ * Unified, declarative mechanism for "force a default option on every tool
+ * call" behaviors exposed by device and Agent Skill CLIs.
+ *
+ * Adding a new behavior flag (e.g. `--deep-search`) is a one-line change to
+ * {@link TOOL_BEHAVIOR_FLAGS}: declare which default-option "bag" it fills.
+ * The tool generator, tools managers and CLI parsing are all generic
+ * over {@link ToolDefaults} and never need to learn about individual flags.
+ *
+ * See https://github.com/web-infra-dev/midscene/issues/2446.
+ */
+/**
+ * Default options injected into generated tool calls. Each field is an
+ * injection point; an explicit per-call value always wins over these defaults.
+ */
+export interface ToolDefaults {
+    /**
+     * Merged into every locate field of action tools (`Tap`, `Input`, ...).
+     * e.g. `{ deepLocate: true }`.
+     */
+    locate?: Record<string, unknown>;
+    /**
+     * Merged into the `act` tool's `aiAction` options.
+     * e.g. `{ deepLocate: true, deepThink: true }`.
+     */
+    act?: Record<string, unknown>;
+}
+export interface ToolBehaviorFlag {
+    /** Kebab-case CLI flag name, e.g. `deep-locate` (exposed as `--deep-locate`). */
+    cli: string;
+    /** One-line description for help output. */
+    description: string;
+    /** Default-option bags this flag turns on when present. */
+    defaults: ToolDefaults;
+}
+/**
+ * The single source of truth for behavior flags. Add a row to support a new
+ * `--flag`; nothing else in the pipeline needs to change.
+ */
+export declare const TOOL_BEHAVIOR_FLAGS: readonly ToolBehaviorFlag[];
+/** Merge two {@link ToolDefaults}, with `b` taking precedence over `a`. */
+export declare function mergeToolDefaults(a: ToolDefaults, b: ToolDefaults): ToolDefaults;
+/**
+ * Resolve the active {@link ToolDefaults} from a predicate that says whether a
+ * given flag (by its `cli` name) is enabled.
+ */
+export declare function resolveToolDefaults(isEnabled: (cli: string) => boolean): ToolDefaults;
+/**
+ * Split argv into the resolved {@link ToolDefaults} and the remaining args.
+ *
+ * Behavior flags (e.g. `--deep-locate`) are global: they may appear anywhere
+ * in argv and are not tied to a specific sub-command. They are recognized by
+ * exact kebab-case match and removed so a strict per-command parser never sees them. Every other
+ * token is returned untouched and in order for that per-command parser.
+ *
+ * This is the single place that knows how a behavior flag looks on the command
+ * line; the device / Agent Skill CLI resolves defaults from
+ * {@link TOOL_BEHAVIOR_FLAGS} through here / {@link resolveToolDefaults}.
+ */
+export declare function stripBehaviorFlags(argv: readonly string[]): {
+    rawArgs: string[];
+    toolDefaults: ToolDefaults;
+};

@@ -1,0 +1,1 @@
+{"version":3,"file":"ai-model/workflows/planning/index.mjs","sources":["../../../../../src/ai-model/workflows/planning/index.ts"],"sourcesContent":["import { plan } from '../../llm-planning';\nimport type { PlanFn } from './types';\n\nexport const genericXmlPlan: PlanFn = plan;\n"],"names":["genericXmlPlan","plan"],"mappings":";AAGO,MAAMA,iBAAyBC"}

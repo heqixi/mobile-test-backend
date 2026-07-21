@@ -1,11 +1,12 @@
 # Dependencies
 node_modules/
 
-# Build
+# Build (workspace packages). Keep vendored Midscene dist committed.
 dist/
 build/
 *.tsbuildinfo
-
+!vendor/midscene/**/dist/
+!vendor/midscene/**/dist/**
 # Env / secrets
 .env
 .env.local

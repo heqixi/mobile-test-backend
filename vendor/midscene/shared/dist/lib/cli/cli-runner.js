@@ -1,0 +1,241 @@
+"use strict";
+var __webpack_require__ = {};
+(()=>{
+    __webpack_require__.n = (module)=>{
+        var getter = module && module.__esModule ? ()=>module['default'] : ()=>module;
+        __webpack_require__.d(getter, {
+            a: getter
+        });
+        return getter;
+    };
+})();
+(()=>{
+    __webpack_require__.d = (exports1, definition)=>{
+        for(var key in definition)if (__webpack_require__.o(definition, key) && !__webpack_require__.o(exports1, key)) Object.defineProperty(exports1, key, {
+            enumerable: true,
+            get: definition[key]
+        });
+    };
+})();
+(()=>{
+    __webpack_require__.o = (obj, prop)=>Object.prototype.hasOwnProperty.call(obj, prop);
+})();
+(()=>{
+    __webpack_require__.r = (exports1)=>{
+        if ('undefined' != typeof Symbol && Symbol.toStringTag) Object.defineProperty(exports1, Symbol.toStringTag, {
+            value: 'Module'
+        });
+        Object.defineProperty(exports1, '__esModule', {
+            value: true
+        });
+    };
+})();
+var __webpack_exports__ = {};
+__webpack_require__.r(__webpack_exports__);
+__webpack_require__.d(__webpack_exports__, {
+    CLIError: ()=>external_cli_error_js_namespaceObject.CLIError,
+    parseCliArgs: ()=>external_cli_args_js_namespaceObject.parseCliArgs,
+    parseValue: ()=>external_cli_args_js_namespaceObject.parseValue,
+    runToolsCLI: ()=>runToolsCLI,
+    reportCLIError: ()=>external_cli_error_js_namespaceObject.reportCLIError,
+    removePrefix: ()=>removePrefix
+});
+const external_node_fs_namespaceObject = require("node:fs");
+const external_node_path_namespaceObject = require("node:path");
+const external_dotenv_namespaceObject = require("dotenv");
+var external_dotenv_default = /*#__PURE__*/ __webpack_require__.n(external_dotenv_namespaceObject);
+const tool_defaults_js_namespaceObject = require("../agent-tools/tool-defaults.js");
+const external_logger_js_namespaceObject = require("../logger.js");
+const external_cli_args_js_namespaceObject = require("./cli-args.js");
+const external_cli_error_js_namespaceObject = require("./cli-error.js");
+const external_screenshot_file_js_namespaceObject = require("./screenshot-file.js");
+const external_verbose_js_namespaceObject = require("./verbose.js");
+const debug = (0, external_logger_js_namespaceObject.getDebug)('cli-runner');
+function outputContentItem(item, isError) {
+    switch(item.type){
+        case 'text':
+            if (isError) console.error(item.text);
+            else console.log(item.text);
+            break;
+        case 'image':
+            {
+                const filepath = (0, external_screenshot_file_js_namespaceObject.writeCliScreenshotFile)(item.data, {
+                    mimeType: item.mimeType,
+                    filenamePrefix: 'screenshot'
+                });
+                console.log(`Screenshot saved: ${filepath}`);
+                (0, external_verbose_js_namespaceObject.emitCliVerboseEvent)({
+                    event: 'artifact',
+                    kind: 'screenshot',
+                    path: filepath,
+                    mimeType: item.mimeType
+                });
+                break;
+            }
+        default:
+            console.log(`[${item.type} content not displayed in CLI]`);
+    }
+}
+function outputResult(result) {
+    for (const item of result.content)outputContentItem(item, result.isError ?? false);
+}
+function removePrefix(name, prefix) {
+    if (prefix && name.startsWith(prefix)) return name.slice(prefix.length);
+    return name;
+}
+function printCommandHelp(scriptName, cmd) {
+    const { def } = cmd;
+    console.log(`\nUsage: ${scriptName} ${cmd.name} [options]\n`);
+    console.log(def.description);
+    const schemaEntries = Object.entries(def.schema);
+    if (schemaEntries.length > 0) {
+        const optionWidth = Math.max(22, ...schemaEntries.map(([key])=>(0, external_cli_args_js_namespaceObject.getCliOptionDisplay)(key, def.cli?.options?.[key]).label.length));
+        console.log('\nOptions:');
+        for (const [key, zodType] of schemaEntries){
+            const { label, aliases } = (0, external_cli_args_js_namespaceObject.getCliOptionDisplay)(key, def.cli?.options?.[key]);
+            const desc = zodType.description ?? '';
+            const aliasText = aliases.length > 0 ? ` (aliases: ${aliases.join(', ')})` : '';
+            console.log(`  ${label.padEnd(optionWidth)} ${desc}${aliasText}`);
+        }
+    }
+    printGlobalOptions();
+}
+function printVersion(scriptName, version) {
+    console.log(`${scriptName} v${version}`);
+}
+function printHelp(scriptName, commands, version) {
+    if (version) {
+        printVersion(scriptName, version);
+        console.log('');
+    }
+    console.log(`\nUsage: ${scriptName} <command> [options]\n`);
+    console.log('Commands:');
+    for (const { name, def } of commands.filter((command)=>!command.hidden))console.log(`  ${name.padEnd(30)} ${def.description}`);
+    console.log(`  ${'version'.padEnd(30)} Show CLI version`);
+    printGlobalOptions();
+    console.log(`\nRun "${scriptName} <command> --help" for more info.`);
+}
+function printGlobalOptions() {
+    const options = [
+        {
+            flag: `--${external_verbose_js_namespaceObject.cliVerboseFlag}`,
+            description: 'Print progress while the command is running. act prints readable progress by default. Use --verbose=jsonl for structured events.'
+        },
+        ...tool_defaults_js_namespaceObject.TOOL_BEHAVIOR_FLAGS.map((flag)=>({
+                flag: `--${flag.cli}`,
+                description: flag.description
+            }))
+    ];
+    const optionWidth = Math.max(...options.map((option)=>option.flag.length));
+    console.log('\nGlobal Options:');
+    for (const option of options)console.log(`  ${option.flag.padEnd(optionWidth)} ${option.description}`);
+}
+async function runToolsCLI(tools, scriptName, options) {
+    const inputArgs = options?.argv ?? process.argv.slice(2);
+    debug('CLI invoked: %s %s', scriptName, inputArgs.join(' '));
+    const { rawArgs: argsWithoutVerbose, verbose, format: verboseFormat } = (0, external_verbose_js_namespaceObject.stripVerboseFlag)(inputArgs);
+    const { rawArgs, toolDefaults } = (0, tool_defaults_js_namespaceObject.stripBehaviorFlags)(argsWithoutVerbose);
+    if (Object.keys(toolDefaults).length > 0) tools.setToolDefaults?.(toolDefaults);
+    const envFile = (0, external_node_path_namespaceObject.join)(process.cwd(), '.env');
+    if ((0, external_node_fs_namespaceObject.existsSync)(envFile)) external_dotenv_default().config({
+        path: envFile
+    });
+    await tools.initTools();
+    const commands = tools.getToolDefinitions().map((def)=>({
+            name: removePrefix(def.name, options?.stripPrefix).toLowerCase(),
+            def
+        }));
+    if (options?.extraCommands?.length) commands.push(...options.extraCommands.flatMap((cmd)=>[
+            {
+                name: cmd.name.toLowerCase(),
+                def: cmd.def,
+                hidden: cmd.hidden
+            },
+            ...(cmd.aliases ?? []).map((alias)=>({
+                    name: alias.toLowerCase(),
+                    def: cmd.def,
+                    hidden: true
+                }))
+        ]));
+    const cliVersion = options?.version;
+    const [commandName, ...restArgs] = rawArgs;
+    if (!commandName || '--help' === commandName || '-h' === commandName) {
+        debug('showing help (no command or --help flag)');
+        printHelp(scriptName, commands, cliVersion);
+        return;
+    }
+    if ('--version' === commandName || '-v' === commandName || 'version' === commandName.toLowerCase()) {
+        if (!cliVersion) throw new external_cli_error_js_namespaceObject.CLIError('Failed to determine CLI version');
+        printVersion(scriptName, cliVersion);
+        return;
+    }
+    const match = commands.find((c)=>c.name.toLowerCase() === commandName.toLowerCase());
+    if (!match) {
+        debug('unknown command: %s', commandName);
+        console.error(`Unknown command: ${commandName}`);
+        printHelp(scriptName, commands, cliVersion);
+        throw new external_cli_error_js_namespaceObject.CLIError(`Unknown command: ${commandName}`);
+    }
+    const parsedArgs = (0, external_cli_args_js_namespaceObject.parseCliArgs)(restArgs);
+    if (true === parsedArgs.help) {
+        debug('showing command help for: %s', match.name);
+        printCommandHelp(scriptName, match);
+        return;
+    }
+    const cliValidationError = (0, external_cli_args_js_namespaceObject.formatCliValidationError)(scriptName, match.name, match.def, parsedArgs);
+    if (cliValidationError) throw new external_cli_error_js_namespaceObject.CLIError(cliValidationError);
+    const handlerArgs = (0, external_cli_args_js_namespaceObject.canonicalizeCliArgKeys)(scriptName, match.name, match.def, parsedArgs);
+    debug('command: %s, args: %s', match.name, JSON.stringify(handlerArgs));
+    const verboseEnabled = verbose || 'act' === match.name;
+    await (0, external_verbose_js_namespaceObject.withCliVerboseContext)({
+        enabled: verboseEnabled,
+        format: verboseFormat,
+        scriptName,
+        commandName: match.name,
+        startedAt: Date.now()
+    }, async ()=>{
+        const startedAt = Date.now();
+        (0, external_verbose_js_namespaceObject.emitCliVerboseEvent)({
+            event: 'command_start',
+            args: (0, external_verbose_js_namespaceObject.compactCliVerboseArgs)(handlerArgs)
+        });
+        try {
+            const result = await match.def.handler(handlerArgs);
+            debug('command %s completed, isError: %s', match.name, result.isError ?? false);
+            outputResult(result);
+            (0, external_verbose_js_namespaceObject.emitCliVerboseEvent)({
+                event: 'command_done',
+                status: result.isError ? 'error' : 'ok',
+                durationMs: Date.now() - startedAt
+            });
+            if (result.isError) throw new external_cli_error_js_namespaceObject.CLIError('Command failed', 1);
+        } catch (error) {
+            if (!(error instanceof external_cli_error_js_namespaceObject.CLIError && 'Command failed' === error.message)) (0, external_verbose_js_namespaceObject.emitCliVerboseEvent)({
+                event: 'command_done',
+                status: 'error',
+                durationMs: Date.now() - startedAt,
+                error: (0, external_verbose_js_namespaceObject.cliVerboseErrorMessage)(error)
+            });
+            throw error;
+        } finally{
+            await tools.destroy();
+        }
+    });
+}
+exports.CLIError = __webpack_exports__.CLIError;
+exports.parseCliArgs = __webpack_exports__.parseCliArgs;
+exports.parseValue = __webpack_exports__.parseValue;
+exports.removePrefix = __webpack_exports__.removePrefix;
+exports.reportCLIError = __webpack_exports__.reportCLIError;
+exports.runToolsCLI = __webpack_exports__.runToolsCLI;
+for(var __rspack_i in __webpack_exports__)if (-1 === [
+    "CLIError",
+    "parseCliArgs",
+    "parseValue",
+    "removePrefix",
+    "reportCLIError",
+    "runToolsCLI"
+].indexOf(__rspack_i)) exports[__rspack_i] = __webpack_exports__[__rspack_i];
+Object.defineProperty(exports, '__esModule', {
+    value: true
+});

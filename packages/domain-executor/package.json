@@ -9,10 +9,10 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
-    "@midscene/android": "latest",
-    "@midscene/core": "latest",
-    "@midscene/playground": "latest",
-    "@midscene/shared": "latest",
+    "@midscene/android": "file:../../vendor/midscene/android",
+    "@midscene/core": "file:../../vendor/midscene/core",
+    "@midscene/playground": "file:../../vendor/midscene/playground",
+    "@midscene/shared": "file:../../vendor/midscene/shared",
     "@mtp/shared-kernel": "0.0.0",
     "@yume-chan/adb": "^2.6.0",
     "@yume-chan/adb-scrcpy": "^2.3.2",

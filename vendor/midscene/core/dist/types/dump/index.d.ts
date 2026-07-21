@@ -1,0 +1,7 @@
+/**
+ * Dump module - utilities for HTML parsing and image restoration.
+ */
+export { restoreImageReferences } from './screenshot-restoration';
+export { escapeContent, unescapeContent, parseImageScripts, parseDumpScript, parseDumpScriptAttributes, generateImageScriptTag, generateDumpScriptTag, } from './html-utils';
+export { getTaskSearchArea, getTaskServiceDump } from './task-service-dump';
+export { deriveTaskStatus, deriveCaseStatus, type TaskStatusFields, type DerivedTaskStatus, } from './task-status';
