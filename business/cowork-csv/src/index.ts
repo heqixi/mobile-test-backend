@@ -1,8 +1,9 @@
 /**
  * @module @mtp/business-cowork-csv
  *
- * 外部业务 Adapter：读取 cowork_test_case.csv，实现 CaseDataSourcePort。
+ * 外部业务 Adapter：读取本包 `data/` 下的用例 CSV，实现 CaseDataSourcePort。
  * 按 CSV **实际列名** 建索引解析（见 COWORK_CSV_COLUMNS）。
+ * 编译 sidecar / Midscene reports 与 CSV 同级，由本业务维护；domain-case 只经 HTTP 协议交互。
  */
 
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
@@ -31,6 +32,11 @@ export {
   stripBom,
 } from './csv-io.js';
 export { reorderCoworkCsvRows } from './reorder-cases.js';
+export {
+  coworkCsvPackageRoot,
+  coworkCsvDataDir,
+  defaultCoworkCsvPath,
+} from './paths.js';
 
 const DIR_COUNT = 15;
 

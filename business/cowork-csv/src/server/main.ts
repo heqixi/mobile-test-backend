@@ -35,6 +35,7 @@ import {
   buildLibraryCaseRunResult,
   writebackLibraryRunReportToCsv,
 } from '../library-run-report.js';
+import { defaultCoworkCsvPath } from '../paths.js';
 import { matchRoute, readBody, sendJson } from './http-utils.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -44,14 +45,8 @@ loadEnv();
 const DEFAULT_PORT = 4103;
 const SERVICE_NAME = 'cowork-library-service';
 
-function defaultCsvPath(): string {
-  return (
-    process.env.COWORK_CSV_PATH?.trim() ||
-    resolve(here, '../../../../../cowork_test_case_top10.csv')
-  );
-}
-
-const csvPath = defaultCsvPath();
+/** CSV / reports / compiled sidecar 均在 business/cowork-csv/data 下由本业务维护 */
+const csvPath = defaultCoworkCsvPath();
 
 function createAdapter(options?: Partial<CreateCoworkCsvAdapterOptions>) {
   return createCoworkCsvAdapter({
@@ -380,6 +375,7 @@ async function main() {
   console.log(`[${SERVICE_NAME}] ready (business case library)`);
   console.log(`  HTTP   http://${host}:${port}`);
   console.log(`  CSV    ${csvPath}`);
+  console.log(`  Reports ${csvPath}.reports/`);
   console.log(`  OpenCode ${openCode.baseUrl}`);
   console.log(`  GET    ${caseLibraryPaths.health} ${caseLibraryPaths.info}`);
   console.log(`  GET    ${caseLibraryPaths.cases}`);
