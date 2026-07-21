@@ -1,15 +1,10 @@
 /**
  * @module @mtp/domain-agent/service/parse-phase
  *
- * 从模型文本解析 precondition / act / judge JSON 信封。
+ * 从模型文本解析 Plan JSON 信封（兼容旧 precondition/act/judge/end 形）。
  */
 
-import type {
-  ActTurn,
-  JudgeTurn,
-  PreconditionTurn,
-  ToolCall,
-} from '../models/turns.js';
+import type { PlanStrategy, PlanTurn, ToolCall } from '../models/turns.js';
 import { ACT_NL_TOOL } from './act-nl.js';
 
 function extractJsonObject(text: string): Record<string, unknown> | null {
@@ -21,16 +16,6 @@ function extractJsonObject(text: string): Record<string, unknown> | null {
   } catch {
     return null;
   }
-}
-
-function parseEvidence(
-  obj: Record<string, unknown> | null,
-  fallback: string,
-): string {
-  if (typeof obj?.evidence === 'string' && obj.evidence.trim()) {
-    return obj.evidence.trim();
-  }
-  return fallback;
 }
 
 function parseCommand(obj: Record<string, unknown> | null): string {
@@ -50,98 +35,160 @@ function parseCommand(obj: Record<string, unknown> | null): string {
 }
 
 /**
- * Precondition 信封：{"met":boolean,"command"?,"evidence","reason"?}
+ * 单一叙述字段：优先 evidence；缺失时回退 reason（兼容旧信封）。
  */
-export function parsePrecondition(
-  text: string,
-): Omit<PreconditionTurn, 'turnId' | 'at'> {
-  const obj = extractJsonObject(text);
-  const met = obj?.met === true;
-  const command = parseCommand(obj);
-  const toolCalls: ToolCall[] =
-    !met && command
-      ? [{ name: ACT_NL_TOOL, arguments: { prompt: command } }]
-      : [];
-  const reason =
-    typeof obj?.reason === 'string' && obj.reason.trim()
-      ? obj.reason.trim()
-      : undefined;
-  return {
-    raw: obj ?? { text },
-    met,
-    toolCalls,
-    reason,
-    evidence: parseEvidence(
-      obj,
-      met
-        ? 'preconditions met'
-        : command
-          ? `preconditions unmet; recovery: ${command}`
-          : 'preconditions unmet; missing recovery command',
-    ),
-  };
+function parseEvidence(
+  obj: Record<string, unknown> | null,
+  fallback: string,
+): string {
+  if (typeof obj?.evidence === 'string' && obj.evidence.trim()) {
+    return obj.evidence.trim();
+  }
+  if (typeof obj?.reason === 'string' && obj.reason.trim()) {
+    return obj.reason.trim();
+  }
+  return fallback;
+}
+
+function toolCallsForCommand(command: string): ToolCall[] {
+  const cmd = command.trim();
+  if (!cmd) return [];
+  return [{ name: ACT_NL_TOOL, arguments: { prompt: cmd } }];
 }
 
 /**
- * Act 信封：{"next":"act"|"judge","command"?,"evidence"}
- * 兼容旧形 {"command","evidence"}（有 command 则视为 next=act）。
+ * 将旧信封映射为 PlanStrategy。
  */
-export function parseAct(text: string): Omit<ActTurn, 'turnId' | 'at'> {
-  const obj = extractJsonObject(text);
-  const command = parseCommand(obj);
+function inferStrategy(
+  obj: Record<string, unknown> | null,
+  command: string,
+): PlanStrategy {
+  if (!obj) return command ? 'act' : 'illegal';
 
-  let next: 'act' | 'judge' =
-    obj?.next === 'judge'
-      ? 'judge'
-      : obj?.next === 'act'
-        ? 'act'
-        : command
-          ? 'act'
-          : 'judge';
+  const raw = obj.strategy;
+  if (
+    raw === 'act' ||
+    raw === 'recovery' ||
+    raw === 'pass' ||
+    raw === 'fail' ||
+    raw === 'illegal'
+  ) {
+    return raw;
+  }
+  // 兼容旧 end → pass
+  if (raw === 'end') return 'pass';
 
-  if (next === 'act' && !command) {
-    next = 'judge';
+  // 旧 judge
+  if (typeof obj.satisfied === 'boolean') {
+    if (obj.satisfied) return 'pass';
+    // 明确不满足且无纠偏 command → 业务 fail；有 command → recovery
+    if (obj.continue === false) return 'fail';
+    return command ? 'recovery' : 'fail';
   }
 
-  const toolCalls: ToolCall[] =
-    next === 'act' && command
-      ? [{ name: ACT_NL_TOOL, arguments: { prompt: command } }]
-      : [];
+  // 旧 precondition
+  if (typeof obj.met === 'boolean') {
+    if (!obj.met) return command ? 'recovery' : 'illegal';
+    return command ? 'act' : 'illegal';
+  }
+
+  // 旧 act：next=judge 须显式 pass/fail
+  if (obj.next === 'judge') return 'illegal';
+  if (obj.next === 'act') return command ? 'act' : 'illegal';
+  if (command) return 'act';
+
+  return 'illegal';
+}
+
+/**
+ * Plan 信封：{"strategy","command"?,"evidence"}
+ * 兼容旧 met/next/satisfied/end 形。
+ */
+export function parsePlan(text: string): Omit<PlanTurn, 'turnId' | 'at'> {
+  const obj = extractJsonObject(text);
+  const command = parseCommand(obj) || undefined;
+  let strategy = inferStrategy(obj, command ?? '');
+
+  // act/recovery 无 command → illegal
+  if ((strategy === 'act' || strategy === 'recovery') && !command) {
+    strategy = 'illegal';
+  }
 
   const evidence = parseEvidence(
     obj,
-    next === 'act'
-      ? `command chosen: ${command}`
-      : 'ready to judge; missing evidence in model JSON',
+    strategy === 'pass'
+      ? 'expectation satisfied'
+      : strategy === 'fail'
+        ? 'expectation not satisfied'
+        : strategy === 'illegal'
+          ? 'illegal or incomplete plan JSON'
+          : command
+            ? `strategy=${strategy}; command=${command}`
+            : `strategy=${strategy}`,
   );
 
-  return { raw: obj ?? { text }, next, toolCalls, evidence };
+  // 空 evidence → illegal
+  if (!evidence.trim()) {
+    strategy = 'illegal';
+  }
+
+  const toolCalls =
+    strategy === 'act' || strategy === 'recovery'
+      ? toolCallsForCommand(command ?? '')
+      : [];
+
+  console.log('[parse-phase:plan] ========== plan parse ==========');
+  console.log('[parse-phase:plan] 1) model raw text:\n', text);
+  console.log('[parse-phase:plan] 2) extracted JSON:', obj);
+  console.log('[parse-phase:plan] 3) strategy / command:', {
+    strategy,
+    command: command ?? '(none)',
+  });
+  console.log('[parse-phase:plan] ========== plan parse end ==========');
+
+  return {
+    raw: obj ?? { text },
+    strategy,
+    toolCalls,
+    command,
+    evidence: evidence.trim() || 'missing evidence in model JSON',
+  };
 }
 
-export function parseJudge(text: string): Omit<JudgeTurn, 'turnId' | 'at'> {
-  const obj = extractJsonObject(text);
-  if (obj && typeof obj.satisfied === 'boolean') {
-    const reason =
-      typeof obj.reason === 'string' && obj.reason.trim()
-        ? obj.reason
-        : text.trim() || 'no reason';
-    return {
-      raw: obj,
-      satisfied: obj.satisfied,
-      reason,
-      continue: typeof obj.continue === 'boolean' ? obj.continue : undefined,
-      evidence: parseEvidence(obj, reason),
-      preconditionMet:
-        typeof obj.preconditionMet === 'boolean'
-          ? obj.preconditionMet
-          : undefined,
-    };
-  }
+/** @deprecated 使用 parsePlan */
+export function parsePrecondition(text: string) {
+  const p = parsePlan(text);
   return {
-    raw: { text },
-    satisfied: false,
-    reason: text.trim() || 'empty judge response',
-    continue: true,
-    evidence: parseEvidence(obj, 'missing evidence in model JSON'),
+    raw: p.raw,
+    met: p.strategy === 'act' || p.strategy === 'pass',
+    toolCalls: p.strategy === 'recovery' ? p.toolCalls : [],
+    evidence: p.evidence,
+    reason: undefined as string | undefined,
+  };
+}
+
+/** @deprecated 使用 parsePlan */
+export function parseAct(text: string) {
+  const p = parsePlan(text);
+  return {
+    raw: p.raw,
+    next: (p.strategy === 'pass' || p.strategy === 'fail'
+      ? 'judge'
+      : 'act') as 'act' | 'judge',
+    toolCalls: p.toolCalls,
+    evidence: p.evidence,
+  };
+}
+
+/** @deprecated 使用 parsePlan */
+export function parseJudge(text: string) {
+  const p = parsePlan(text);
+  return {
+    raw: p.raw,
+    satisfied: p.strategy === 'pass',
+    reason: p.evidence,
+    continue: p.strategy !== 'pass' && p.strategy !== 'fail',
+    evidence: p.evidence,
+    preconditionMet: undefined as boolean | undefined,
   };
 }
