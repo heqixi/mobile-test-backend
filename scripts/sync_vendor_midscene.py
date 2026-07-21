@@ -21,6 +21,8 @@ WORKSPACE_TO_FILE = {
     "@midscene/core": "file:../core",
     "@midscene/playground": "file:../playground",
     "@midscene/android": "file:../android",
+    "@midscene/visualizer": "file:../visualizer",
+    "@midscene/web": "file:../web",
 }
 
 
@@ -92,9 +94,13 @@ def ensure_built(ms: Path, rslib: Path) -> None:
         )
         run_rslib(ms, rslib, "shared")
 
-    for pkg in ("core", "android", "playground"):
+    for pkg in ("core", "android", "playground", "visualizer"):
         if not (ms / "packages" / pkg / "dist").is_dir():
             run_rslib(ms, rslib, pkg)
+
+    web_src = ms / "packages" / "web-integration"
+    if not (web_src / "dist").is_dir():
+        run_rslib(ms, rslib, "web-integration")
 
 
 def copy_items(src: Path, dst: Path, items: list[str]) -> None:
@@ -134,8 +140,10 @@ def rewrite_workspace_deps(vendor: Path) -> None:
         ):
             deps = data.get(section) or {}
             for k, v in list(deps.items()):
-                if k in WORKSPACE_TO_FILE and isinstance(v, str) and v.startswith(
-                    "workspace:"
+                if k not in WORKSPACE_TO_FILE or not isinstance(v, str):
+                    continue
+                if v.startswith("workspace:") or (
+                    k.startswith("@midscene/") and not v.startswith("file:../")
                 ):
                     deps[k] = WORKSPACE_TO_FILE[k]
             if deps:
@@ -150,7 +158,8 @@ def write_vendor_readme(vendor: Path) -> None:
     (vendor / "README.md").write_text(
         """# Vendored Midscene packages (built artifacts)
 
-Used by `@mtp/domain-executor` and `@mtp/business-cowork-csv` via `file:` deps.
+Used by `@mtp/domain-executor`, `@mtp/business-cowork-csv`, and
+`mobile-test-frontend` via `file:` deps.
 Refresh from the sibling `midscene` repo with:
 
 ```bash
@@ -184,12 +193,19 @@ def main() -> None:
     copy_items(
         ms / "packages" / "playground", VENDOR / "playground", ["dist", "static"]
     )
+    copy_items(ms / "packages" / "visualizer", VENDOR / "visualizer", ["dist", "html"])
+    # npm package name is @midscene/web
+    copy_items(
+        ms / "packages" / "web-integration",
+        VENDOR / "web",
+        ["dist", "static", "bin", "iife-script"],
+    )
 
     rewrite_workspace_deps(VENDOR)
     write_vendor_readme(VENDOR)
 
     print(f"Synced into {VENDOR}")
-    print("Next: npm install && restart executor-service")
+    print("Next: npm install (backend + frontend) && restart services")
 
 
 if __name__ == "__main__":
