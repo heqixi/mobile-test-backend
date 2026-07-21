@@ -5,11 +5,17 @@
  * 默认监听 :4103；编译走 LlmInstructionCompiler（OpenCode）。
  */
 
+import { createReadStream, existsSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { config as loadEnv } from 'dotenv';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { ConnectedCompiledBundle, CompileProgressEvent } from '@mtp/domain-case';
+import type {
+  ConnectedCompiledBundle,
+  CompileProgressEvent,
+  LibraryCaseRunResult,
+  LibraryRunReportWritebackRequest,
+} from '@mtp/domain-case';
 import {
   CaseDomainError,
   caseLibraryPaths,
@@ -22,6 +28,13 @@ import {
   type CreateCoworkCsvAdapterOptions,
 } from '../index.js';
 import { compileCoworkCase } from '../compile-case.js';
+import {
+  getLibraryRunReport,
+  listLibraryRunReports,
+  persistLibraryRunReport,
+  buildLibraryCaseRunResult,
+  writebackLibraryRunReportToCsv,
+} from '../library-run-report.js';
 import { matchRoute, readBody, sendJson } from './http-utils.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -34,13 +47,15 @@ const SERVICE_NAME = 'cowork-library-service';
 function defaultCsvPath(): string {
   return (
     process.env.COWORK_CSV_PATH?.trim() ||
-    resolve(here, '../../../../../cowork_test_case.csv')
+    resolve(here, '../../../../../cowork_test_case_top10.csv')
   );
 }
 
+const csvPath = defaultCsvPath();
+
 function createAdapter(options?: Partial<CreateCoworkCsvAdapterOptions>) {
   return createCoworkCsvAdapter({
-    csvPath: options?.csvPath ?? defaultCsvPath(),
+    csvPath: options?.csvPath ?? csvPath,
     compiledStorePath: options?.compiledStorePath,
     sourceId: options?.sourceId ?? 'cowork-csv',
     displayName: options?.displayName,
@@ -124,6 +139,26 @@ async function main() {
           ? pathParam.split('/').map((s) => s.trim()).filter(Boolean)
           : undefined;
         sendJson(res, 200, await adapter.listCases({ q, pathPrefix }));
+        return;
+      }
+
+      if (method === 'POST' && path === caseLibraryPaths.casesReorder) {
+        const body = (await readBody(req)) as { caseIds?: string[] };
+        if (!Array.isArray(body.caseIds) || body.caseIds.length === 0) {
+          sendJson(res, 400, { error: 'caseIds array required' });
+          return;
+        }
+        if (!adapter.reorderCases) {
+          sendJson(res, 501, { error: 'reorderCases not supported' });
+          return;
+        }
+        try {
+          sendJson(res, 200, await adapter.reorderCases(body.caseIds));
+        } catch (error) {
+          const message =
+            error instanceof Error ? error.message : String(error);
+          sendJson(res, 400, { error: message });
+        }
         return;
       }
 
@@ -215,6 +250,113 @@ async function main() {
         }
       }
 
+      // ── Midscene-compatible library run reports ───────────────
+      if (method === 'GET' && path === caseLibraryPaths.reports) {
+        sendJson(res, 200, listLibraryRunReports(csvPath));
+        return;
+      }
+      if (method === 'POST' && path === caseLibraryPaths.reports) {
+        const body = (await readBody(req)) as {
+          groupName?: string;
+          groupDescription?: string;
+          deviceType?: string;
+          cases?: Array<
+            LibraryCaseRunResult | {
+              caseId: string;
+              title: string;
+              path?: string[];
+              priority?: string;
+              sourceFields?: Record<string, string>;
+              status: LibraryCaseRunResult['status'];
+              durationMs: number;
+              reason?: string;
+              instructionResults?: LibraryCaseRunResult['instructionResults'];
+            }
+          >;
+          reportId?: string;
+          createdAt?: string;
+        };
+        if (!Array.isArray(body.cases)) {
+          sendJson(res, 400, {
+            error: 'cases array required (Midscene-compatible LibraryCaseRunResult[])',
+          });
+          return;
+        }
+        const cases: LibraryCaseRunResult[] = body.cases.map((c) => {
+          if ('dump' in c && c.dump && 'attributes' in c && c.attributes) {
+            return c as LibraryCaseRunResult;
+          }
+          return buildLibraryCaseRunResult({
+            ...c,
+            deviceType: body.deviceType,
+          });
+        });
+        const report = persistLibraryRunReport({
+          csvPath,
+          groupName:
+            body.groupName ??
+            adapter.info.displayName ??
+            'Cowork CSV library run',
+          groupDescription: body.groupDescription,
+          deviceType: body.deviceType,
+          cases,
+          reportId: body.reportId,
+          createdAt: body.createdAt,
+        });
+        sendJson(res, 201, report);
+        return;
+      }
+      {
+        const p = matchRoute(caseLibraryRoutePatterns.reportHtml, path);
+        if (method === 'GET' && p?.reportId) {
+          const report = getLibraryRunReport(csvPath, p.reportId);
+          if (!report?.htmlPath || !existsSync(report.htmlPath)) {
+            sendJson(res, 404, { error: `Report HTML not found: ${p.reportId}` });
+            return;
+          }
+          res.writeHead(200, {
+            'Content-Type': 'text/html; charset=utf-8',
+            'Access-Control-Allow-Origin': '*',
+          });
+          createReadStream(report.htmlPath).pipe(res);
+          return;
+        }
+      }
+      {
+        const p = matchRoute(caseLibraryRoutePatterns.reportWriteback, path);
+        if (method === 'POST' && p?.reportId) {
+          const body = (await readBody(req)) as LibraryRunReportWritebackRequest;
+          try {
+            sendJson(
+              res,
+              200,
+              writebackLibraryRunReportToCsv({
+                csvPath,
+                reportId: p.reportId,
+                body,
+              }),
+            );
+          } catch (error) {
+            const message =
+              error instanceof Error ? error.message : String(error);
+            sendJson(res, 400, { error: message });
+          }
+          return;
+        }
+      }
+      {
+        const p = matchRoute(caseLibraryRoutePatterns.reportDetail, path);
+        if (method === 'GET' && p?.reportId) {
+          const report = getLibraryRunReport(csvPath, p.reportId);
+          if (!report) {
+            sendJson(res, 404, { error: `Report not found: ${p.reportId}` });
+            return;
+          }
+          sendJson(res, 200, report);
+          return;
+        }
+      }
+
       sendJson(res, 404, { error: `Unknown route ${method} ${path}` });
     } catch (error) {
       if (error instanceof CaseDomainError) {
@@ -237,12 +379,16 @@ async function main() {
   console.log('');
   console.log(`[${SERVICE_NAME}] ready (business case library)`);
   console.log(`  HTTP   http://${host}:${port}`);
-  console.log(`  CSV    ${defaultCsvPath()}`);
+  console.log(`  CSV    ${csvPath}`);
   console.log(`  OpenCode ${openCode.baseUrl}`);
   console.log(`  GET    ${caseLibraryPaths.health} ${caseLibraryPaths.info}`);
   console.log(`  GET    ${caseLibraryPaths.cases}`);
+  console.log(`  POST   ${caseLibraryPaths.casesReorder}`);
   console.log(`  GET    /api/library/cases/:id[/outline|/compiled]`);
   console.log(`  POST   /api/library/cases/:id/compiled | compile`);
+  console.log(`  GET/POST ${caseLibraryPaths.reports} (Midscene dump HTML)`);
+  console.log(`  GET    /api/library/reports/:id[/html]`);
+  console.log(`  POST   /api/library/reports/:id/writeback`);
   console.log('');
 }
 

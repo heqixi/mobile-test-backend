@@ -5,7 +5,6 @@
  * 按 CSV **实际列名** 建索引解析（见 COWORK_CSV_COLUMNS）。
  */
 
-import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import type {
@@ -13,29 +12,25 @@ import type {
   CaseDataSourcePort,
   ConnectedCaseDetail,
   ConnectedCaseOutline,
-  ConnectedCaseSummary,
   ConnectedCompiledBundle,
 } from '@mtp/domain-case';
 import { CaseDomainError } from '@mtp/domain-case';
+import {
+  COWORK_CSV_COLUMNS,
+  makeCoworkCaseId,
+  parseCsv,
+  stripBom,
+} from './csv-io.js';
+import { reorderCoworkCsvRows } from './reorder-cases.js';
 
-/**
- * cowork_test_case.csv 实际表头列名。
- * 表头示例：
- * 用例编号,目录1..目录15,用例标题,前提条件,操作步骤,预期结果,用例等级,,灰度冒烟-双端,,安卓端测试,测试结果,...
- */
-export const COWORK_CSV_COLUMNS = {
-  caseNo: '用例编号',
-  title: '用例标题',
-  preconditions: '前提条件',
-  steps: '操作步骤',
-  expected: '预期结果',
-  priority: '用例等级',
-  graySmoke: '灰度冒烟-双端',
-  androidTester: '安卓端测试',
-  testResult: '测试结果',
-  iosTester: 'iOS端测试',
-  harmonyTester: '鸿蒙端测试',
-} as const;
+export {
+  COWORK_CSV_COLUMNS,
+  makeCoworkCaseId,
+  parseCsv,
+  serializeCsv,
+  stripBom,
+} from './csv-io.js';
+export { reorderCoworkCsvRows } from './reorder-cases.js';
 
 const DIR_COUNT = 15;
 
@@ -53,63 +48,6 @@ export interface CoworkCsvRow {
 }
 
 type CompiledStore = Record<string, ConnectedCompiledBundle>;
-
-function stripBom(s: string): string {
-  return s.replace(/^\uFEFF/, '');
-}
-
-/** 简易 CSV 解析（支持引号内换行） */
-export function parseCsv(text: string): string[][] {
-  const rows: string[][] = [];
-  let row: string[] = [];
-  let cell = '';
-  let i = 0;
-  let inQuotes = false;
-  const src = stripBom(text);
-  while (i < src.length) {
-    const ch = src[i]!;
-    if (inQuotes) {
-      if (ch === '"') {
-        if (src[i + 1] === '"') {
-          cell += '"';
-          i += 2;
-          continue;
-        }
-        inQuotes = false;
-        i += 1;
-        continue;
-      }
-      cell += ch;
-      i += 1;
-      continue;
-    }
-    if (ch === '"') {
-      inQuotes = true;
-      i += 1;
-      continue;
-    }
-    if (ch === ',') {
-      row.push(cell);
-      cell = '';
-      i += 1;
-      continue;
-    }
-    if (ch === '\n' || ch === '\r') {
-      if (ch === '\r' && src[i + 1] === '\n') i += 1;
-      row.push(cell);
-      cell = '';
-      if (row.some((c) => c.trim() !== '')) rows.push(row);
-      row = [];
-      i += 1;
-      continue;
-    }
-    cell += ch;
-    i += 1;
-  }
-  row.push(cell);
-  if (row.some((c) => c.trim() !== '')) rows.push(row);
-  return rows;
-}
 
 /** 列名 → 首次出现的下标（处理重复列名：截图/备注 取首次） */
 function buildColumnIndex(header: string[]): Map<string, number> {
@@ -160,10 +98,8 @@ function buildSourceFields(
   return out;
 }
 
-function makeCaseId(rowIndex: number, title: string, path: string[]): string {
-  const raw = `${rowIndex}|${path.join('/')}|${title}`;
-  const hash = createHash('sha1').update(raw).digest('hex').slice(0, 10);
-  return `cowork-${String(rowIndex).padStart(3, '0')}-${hash}`;
+function makeCaseId(title: string, path: string[], caseNo?: string): string {
+  return makeCoworkCaseId(title, path, caseNo);
 }
 
 function preview(text: string, max = 120): string {
@@ -234,7 +170,7 @@ export function createCoworkCsvAdapter(
 
     const path = buildPath(colIndex, line);
     const numbered = cellAt(colIndex, line, COWORK_CSV_COLUMNS.caseNo);
-    const caseId = numbered || makeCaseId(r, title, path);
+    const caseId = makeCaseId(title, path, numbered);
     const sourceFields = buildSourceFields(header, line);
 
     rows.push({
@@ -250,7 +186,13 @@ export function createCoworkCsvAdapter(
     });
   }
 
-  const byId = new Map(rows.map((row) => [row.caseId, row]));
+  let orderedRows = rows;
+  const byId = new Map(orderedRows.map((row) => [row.caseId, row]));
+
+  function rebuildById(): void {
+    byId.clear();
+    for (const row of orderedRows) byId.set(row.caseId, row);
+  }
 
   function loadStore(): CompiledStore {
     if (!existsSync(compiledStorePath)) return {};
@@ -290,7 +232,7 @@ export function createCoworkCsvAdapter(
 
     async listCases(filter?: CaseDataSourceListFilter) {
       const store = loadStore();
-      let list = rows;
+      let list = orderedRows;
       if (filter?.pathPrefix?.length) {
         list = list.filter((row) =>
           filter.pathPrefix!.every((p, i) => row.path[i] === p),
@@ -371,6 +313,24 @@ export function createCoworkCsvAdapter(
         compiledAt: bundle.compiledAt ?? new Date().toISOString(),
       };
       saveStore(store);
+    },
+
+    async reorderCases(caseIds: string[]) {
+      const result = reorderCoworkCsvRows(csvPath, caseIds);
+      const next: CoworkCsvRow[] = [];
+      for (const id of result.caseIds) {
+        const row = byId.get(id);
+        if (row) next.push(row);
+      }
+      for (const row of orderedRows) {
+        if (!result.caseIds.includes(row.caseId)) next.push(row);
+      }
+      orderedRows = next.map((row, i) => {
+        row.rowIndex = i + 1;
+        return row;
+      });
+      rebuildById();
+      return port.listCases();
     },
   };
 
