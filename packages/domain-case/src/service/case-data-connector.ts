@@ -132,5 +132,60 @@ export function createCaseDataConnector(): CaseDataConnectorPort {
       onEvent({ type: 'done', caseId, bundle });
       return bundle;
     },
+
+    async listRunReports() {
+      const s = requireSource(source);
+      if (!s.listRunReports) {
+        throw new CaseDomainError(
+          'CONNECTOR_NOT_CONNECTED',
+          'Connected source does not support listRunReports',
+        );
+      }
+      return s.listRunReports();
+    },
+
+    async getRunReport(reportId) {
+      const s = requireSource(source);
+      if (!s.getRunReport) {
+        throw new CaseDomainError(
+          'CONNECTOR_NOT_CONNECTED',
+          'Connected source does not support getRunReport',
+        );
+      }
+      return s.getRunReport(reportId);
+    },
+
+    async saveRunReport(input) {
+      const s = requireSource(source);
+      if (!s.saveRunReport) {
+        throw new CaseDomainError(
+          'CONNECTOR_NOT_CONNECTED',
+          'Connected source does not support saveRunReport',
+        );
+      }
+      return s.saveRunReport(input);
+    },
+
+    async writebackRunReport(reportId, body) {
+      const s = requireSource(source);
+      if (!s.writebackRunReport) {
+        throw new CaseDomainError(
+          'CONNECTOR_NOT_CONNECTED',
+          'Connected source does not support writebackRunReport',
+        );
+      }
+      return s.writebackRunReport(reportId, body);
+    },
+
+    async reorderCases(caseIds) {
+      const s = requireSource(source);
+      if (!s.reorderCases) {
+        throw new CaseDomainError(
+          'CONNECTOR_NOT_CONNECTED',
+          'Connected source does not support reorderCases',
+        );
+      }
+      return s.reorderCases(caseIds);
+    },
   };
 }

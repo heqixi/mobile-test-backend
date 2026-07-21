@@ -15,6 +15,13 @@ import type {
   ConnectedCompiledBundle,
 } from '../models/connected-case.js';
 import type { CompileProgressEvent } from '../models/compile-progress.js';
+import type {
+  LibraryCaseRunResult,
+  LibraryRunReport,
+  LibraryRunReportSummaryItem,
+  LibraryRunReportWritebackRequest,
+  LibraryRunReportWritebackResponse,
+} from '../models/library-run-report.js';
 import type { Instruction } from '@mtp/domain-agent';
 import type {
   CaseDataSourceListFilter,
@@ -65,4 +72,25 @@ export interface CaseDataConnectorPort {
     caseId: string,
     onEvent: (event: CompileProgressEvent) => void,
   ): Promise<ConnectedCompiledBundle>;
+
+  listRunReports(): Promise<LibraryRunReportSummaryItem[]>;
+
+  getRunReport(reportId: string): Promise<LibraryRunReport | null>;
+
+  saveRunReport(input: {
+    groupName?: string;
+    groupDescription?: string;
+    deviceType?: string;
+    cases: LibraryCaseRunResult[];
+    reportId?: string;
+    createdAt?: string;
+  }): Promise<LibraryRunReport>;
+
+  writebackRunReport(
+    reportId: string,
+    body?: LibraryRunReportWritebackRequest,
+  ): Promise<LibraryRunReportWritebackResponse>;
+
+  /** 按 caseIds 重排并回写业务源；返回最新列表 */
+  reorderCases(caseIds: string[]): Promise<ConnectedCaseSummary[]>;
 }

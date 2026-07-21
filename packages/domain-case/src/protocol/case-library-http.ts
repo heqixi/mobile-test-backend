@@ -12,6 +12,11 @@ import type {
   ConnectedCaseSummary,
   ConnectedCompiledBundle,
 } from '../models/connected-case.js';
+import type {
+  LibraryRunReport,
+  LibraryRunReportSummaryItem,
+  LibraryRunReportWritebackResponse,
+} from '../models/library-run-report.js';
 
 /** 用例库 REST 路径 */
 export const caseLibraryPaths = {
@@ -19,6 +24,8 @@ export const caseLibraryPaths = {
   libraryHealth: '/api/library/health',
   info: '/api/library/info',
   cases: '/api/library/cases',
+  /** POST body: { caseIds: string[] } — 重排并回写业务源 */
+  casesReorder: '/api/library/cases/reorder',
   case: (caseId: string) =>
     `/api/library/cases/${encodeURIComponent(caseId)}`,
   outline: (caseId: string) =>
@@ -28,14 +35,25 @@ export const caseLibraryPaths = {
   /** 业务切步 + LLM 编译并落盘 */
   compile: (caseId: string) =>
     `/api/library/cases/${encodeURIComponent(caseId)}/compile`,
+  /** Midscene 兼容的用例库运行报告 */
+  reports: '/api/library/reports',
+  report: (reportId: string) =>
+    `/api/library/reports/${encodeURIComponent(reportId)}`,
+  reportWriteback: (reportId: string) =>
+    `/api/library/reports/${encodeURIComponent(reportId)}/writeback`,
+  reportHtml: (reportId: string) =>
+    `/api/library/reports/${encodeURIComponent(reportId)}/html`,
 } as const;
 
-/** 路由匹配模板（`:caseId` 占位） */
+/** 路由匹配模板（`:caseId` / `:reportId` 占位） */
 export const caseLibraryRoutePatterns = {
   caseDetail: '/api/library/cases/:caseId',
   outline: '/api/library/cases/:caseId/outline',
   compiled: '/api/library/cases/:caseId/compiled',
   compile: '/api/library/cases/:caseId/compile',
+  reportDetail: '/api/library/reports/:reportId',
+  reportWriteback: '/api/library/reports/:reportId/writeback',
+  reportHtml: '/api/library/reports/:reportId/html',
 } as const;
 
 export interface CaseLibraryHealthResponse {
@@ -60,3 +78,10 @@ export type CaseLibraryCompiledResponse =
   | { empty: true };
 
 export type CaseLibraryCompileResponse = ConnectedCompiledBundle;
+
+export type CaseLibraryReportListResponse = LibraryRunReportSummaryItem[];
+
+export type CaseLibraryReportResponse = LibraryRunReport;
+
+export type CaseLibraryReportWritebackResponse =
+  LibraryRunReportWritebackResponse;

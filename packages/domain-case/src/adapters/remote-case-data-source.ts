@@ -5,7 +5,6 @@
  * 类比 database-connector：只持有 baseUrl，经网络访问独立业务服务。
  */
 
-import { CaseDomainError } from '../errors.js';
 import type {
   CaseDataSourceInfo,
   ConnectedCaseDetail,
@@ -14,6 +13,13 @@ import type {
   ConnectedCompiledBundle,
 } from '../models/connected-case.js';
 import type { CompileProgressEvent } from '../models/compile-progress.js';
+import type {
+  LibraryCaseRunResult,
+  LibraryRunReport,
+  LibraryRunReportSummaryItem,
+  LibraryRunReportWritebackRequest,
+  LibraryRunReportWritebackResponse,
+} from '../models/library-run-report.js';
 import {
   caseLibraryPaths,
   type CaseLibraryCompiledResponse,
@@ -24,6 +30,7 @@ import type {
   CaseDataSourceListFilter,
   CaseDataSourcePort,
 } from '../ports/case-data-source-port.js';
+import { CaseDomainError } from '../errors.js';
 
 export interface RemoteCaseDataSourceOptions {
   /** 例如 http://127.0.0.1:4103 */
@@ -202,6 +209,52 @@ export function createRemoteCaseDataSource(
         throw new Error(`${path}: stream ended without done event`);
       }
       return finalBundle;
+    },
+
+    async listRunReports() {
+      return get<LibraryRunReportSummaryItem[]>(caseLibraryPaths.reports);
+    },
+
+    async getRunReport(reportId: string) {
+      try {
+        return await get<LibraryRunReport>(caseLibraryPaths.report(reportId));
+      } catch (error) {
+        if (error instanceof CaseDomainError && error.code === 'CASE_NOT_FOUND') {
+          return null;
+        }
+        throw error;
+      }
+    },
+
+    async saveRunReport(input: {
+      groupName?: string;
+      groupDescription?: string;
+      deviceType?: string;
+      cases: LibraryCaseRunResult[];
+      reportId?: string;
+      createdAt?: string;
+    }) {
+      return post<LibraryRunReport>(caseLibraryPaths.reports, input);
+    },
+
+    async writebackRunReport(
+      reportId: string,
+      body?: LibraryRunReportWritebackRequest,
+    ) {
+      return post<LibraryRunReportWritebackResponse>(
+        caseLibraryPaths.reportWriteback(reportId),
+        body ?? {},
+      );
+    },
+
+    getRunReportHtmlPath(reportId: string) {
+      return `${base}${caseLibraryPaths.reportHtml(reportId)}`;
+    },
+
+    async reorderCases(caseIds: string[]) {
+      return post<ConnectedCaseSummary[]>(caseLibraryPaths.casesReorder, {
+        caseIds,
+      });
     },
   };
 

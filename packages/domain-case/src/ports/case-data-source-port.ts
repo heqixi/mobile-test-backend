@@ -13,6 +13,13 @@ import type {
   ConnectedCompiledBundle,
 } from '../models/connected-case.js';
 import type { CompileProgressEvent } from '../models/compile-progress.js';
+import type {
+  LibraryCaseRunResult,
+  LibraryRunReport,
+  LibraryRunReportSummaryItem,
+  LibraryRunReportWritebackRequest,
+  LibraryRunReportWritebackResponse,
+} from '../models/library-run-report.js';
 
 export interface CaseDataSourceListFilter {
   /** 目录路径前缀匹配 */
@@ -60,4 +67,38 @@ export interface CaseDataSourcePort {
     caseId: string,
     onEvent: (event: CompileProgressEvent) => void,
   ): Promise<ConnectedCompiledBundle>;
+
+  /** Midscene 兼容：列出用例库运行报告 */
+  listRunReports?(): Promise<LibraryRunReportSummaryItem[]>;
+
+  /** Midscene 兼容：读取单份运行报告 */
+  getRunReport?(reportId: string): Promise<LibraryRunReport | null>;
+
+  /**
+   * Midscene 兼容：落盘运行报告（写 dump HTML + JSON）。
+   * body.cases[].dump 须为 Midscene ReportActionDump 形状。
+   */
+  saveRunReport?(input: {
+    groupName?: string;
+    groupDescription?: string;
+    deviceType?: string;
+    cases: LibraryCaseRunResult[];
+    reportId?: string;
+    createdAt?: string;
+  }): Promise<LibraryRunReport>;
+
+  /** 将报告结果回写到业务源（如 CSV「测试结果」） */
+  writebackRunReport?(
+    reportId: string,
+    body?: LibraryRunReportWritebackRequest,
+  ): Promise<LibraryRunReportWritebackResponse>;
+
+  /** Midscene HTML 报告的可访问 URL（相对业务库 base） */
+  getRunReportHtmlPath?(reportId: string): string | null;
+
+  /**
+   * 按 caseIds 重排业务源中的用例顺序（如 CSV 行序）并持久化。
+   * 返回重排后的列表。
+   */
+  reorderCases?(caseIds: string[]): Promise<ConnectedCaseSummary[]>;
 }
