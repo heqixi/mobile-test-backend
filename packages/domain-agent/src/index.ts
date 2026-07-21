@@ -17,6 +17,8 @@ export * from './adapters/executor-http.js';
 export * from './service/system-prompt.js';
 export * from './service/act-nl.js';
 export * from './service/parse-phase.js';
+export * from './service/validate-act-command.js';
 export * from './service/evidence-compiler.js';
 export * from './service/visual-evidence-store.js';
+export * from './service/loop/episode-fsm.js';
 export * from './service/agent-loop.js';

@@ -1,9 +1,10 @@
 /**
  * @module @mtp/domain-agent/service/agent-loop
  *
- * # Agent Loop：act → (dispatch act_nl) → judge → …
+ * # Agent Loop：plan ⇄ act
  *
- * 本文件只保留状态机编排；解析 / prompt / Episode 记录见同目录其它模块。
+ * 状态只表示下一步：`plan` | `act` | 终端。
+ * 转移矩阵见 `loop/episode-fsm.ts`。
  */
 
 import { randomUUID } from 'node:crypto';
@@ -23,13 +24,7 @@ import type {
   AgentLoopEvent,
   AgentLoopEventListener,
 } from '../models/agent-event.js';
-import type {
-  ActTurn,
-  JudgeTurn,
-  ObservationTurn,
-  PreconditionTurn,
-  ToolCall,
-} from '../models/turns.js';
+import type { ObservationTurn, PlanTurn } from '../models/turns.js';
 import {
   bindJudgeSuccessAsCandidate,
   bindJudgeSuccessAsCaseTailGolden,
@@ -60,29 +55,49 @@ import {
   compileVisualEvidence,
   resolveVisualEvidenceMode,
 } from './evidence-compiler.js';
-import { parseAct, parseJudge, parsePrecondition } from './parse-phase.js';
-import { askPhaseLlm } from './phase-llm.js';
-import { expectationText, hasPreconditions } from './system-prompt.js';
+import {
+  isTerminalStatus,
+  transitionFromAct,
+  transitionFromPlan,
+  type FsmLimits,
+} from './loop/episode-fsm.js';
+import { parsePlan } from './parse-phase.js';
+import { askPhaseLlm, askPhaseLlmRepair } from './phase-llm.js';
+import { expectationText } from './system-prompt.js';
+import {
+  buildCommandRepairPrompt,
+  validateMidsceneNlCommand,
+} from './validate-act-command.js';
 import { persistVisualEvidencePng } from './visual-evidence-store.js';
 
 export { ACT_NL_TOOL, summarizeMidsceneResult } from './act-nl.js';
-export { parseAct, parseJudge, parsePrecondition } from './parse-phase.js';
+export {
+  parseAct,
+  parseJudge,
+  parsePlan,
+  parsePrecondition,
+} from './parse-phase.js';
+export {
+  buildCommandRepairPrompt,
+  validateMidsceneNlCommand,
+} from './validate-act-command.js';
 
 export interface CreateAgentLoopOptions extends OpenCodeHttpOptions {
   client?: OpenCodeHttpClient;
   executor?: ExecutorHttpClient;
   executorOptions?: ExecutorHttpOptions;
-  /** act→judge 最大轮次；默认 8 */
+  /** plan 最大轮次；默认 8（原 maxRounds） */
   maxRounds?: number;
-  /** 连续 judge 未满足（unsatisfied）上限；默认 3，连续达到后直接 failed 并中止 Midscene */
-  maxJudgeFailures?: number;
-  /** 连续 precondition 修复次数上限；默认 3 */
+  maxPlanRounds?: number;
+  /** 连续 recovery 上限；默认 3 */
+  maxRecovery?: number;
   maxPreconditionFailures?: number;
+  /** 连续 Act 失败上限；默认 3 */
+  maxActFailures?: number;
+  /** @deprecated 映射到 maxActFailures */
+  maxJudgeFailures?: number;
   onEvent?: AgentLoopEventListener;
   model?: { providerID: string; modelID: string };
-  /**
-   * act_nl 优先交给前端 Playground；返回 null 时回退 executor.freeformExecute。
-   */
   runActNlViaPlayground?: (input: {
     command: string;
     requestId: string;
@@ -93,8 +108,16 @@ export interface CreateAgentLoopOptions extends OpenCodeHttpOptions {
     result?: unknown;
     error?: string;
   } | null>;
-  /** 用户 abort 时取消等待中的 Playground run */
   cancelPlaygroundRun?: (requestId: string) => void;
+}
+
+function envLimit(
+  option: number | undefined,
+  envName: string,
+  fallback: number,
+): number {
+  const raw = option ?? Number(process.env[envName] ?? fallback);
+  return Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : fallback;
 }
 
 export function createAgentLoop(
@@ -103,25 +126,39 @@ export function createAgentLoop(
   const client = options.client ?? createOpenCodeHttpClient(options);
   const executor =
     options.executor ?? createExecutorHttpClient(options.executorOptions);
-  const maxRounds = options.maxRounds ?? 8;
-  const maxJudgeFailures = (() => {
-    const raw =
-      options.maxJudgeFailures ??
-      Number(process.env.AGENT_MAX_JUDGE_FAILURES ?? 3);
-    return Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : 3;
-  })();
-  const maxPreconditionFailures = (() => {
-    const raw =
-      options.maxPreconditionFailures ??
-      Number(process.env.AGENT_MAX_PRECONDITION_FAILURES ?? 3);
-    return Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : 3;
-  })();
+
+  const limits: FsmLimits = {
+    maxPlanRounds: envLimit(
+      options.maxPlanRounds ?? options.maxRounds,
+      'AGENT_MAX_PLAN_ROUNDS',
+      envLimit(options.maxRounds, 'AGENT_MAX_ROUNDS', 8),
+    ),
+    maxRecovery: envLimit(
+      options.maxRecovery ?? options.maxPreconditionFailures,
+      'AGENT_MAX_RECOVERY',
+      envLimit(
+        options.maxPreconditionFailures,
+        'AGENT_MAX_PRECONDITION_FAILURES',
+        3,
+      ),
+    ),
+    maxIllegalRepairs: envLimit(
+      undefined,
+      'AGENT_MAX_COMMAND_REPAIRS',
+      2,
+    ),
+    maxActFailures: envLimit(
+      options.maxActFailures ?? options.maxJudgeFailures,
+      'AGENT_MAX_ACT_FAILURES',
+      envLimit(options.maxJudgeFailures, 'AGENT_MAX_JUDGE_FAILURES', 3),
+    ),
+  };
+
   const onEvent = options.onEvent;
   const openCodeModel = resolveOpenCodeModel(options.model);
   const runActNlViaPlayground = options.runActNlViaPlayground;
   const cancelPlaygroundRun = options.cancelPlaygroundRun;
   const episodes = new Map<UUID, EpisodeRecord>();
-  /** Stop 早于 openEpisode 时登记，open 后立即 abort */
   const pendingAbortStreamIds = new Set<string>();
 
   const phaseLlm = {
@@ -146,7 +183,6 @@ export function createAgentLoop(
     else console.log(line);
   }
 
-  /** SSE 过大时浏览器 EventSource 会丢事件；限制图片 dataUrl */
   const SSE_IMAGE_MAX_CHARS = Number(
     process.env.AGENT_SSE_IMAGE_MAX_CHARS ?? 120_000,
   );
@@ -177,20 +213,8 @@ export function createAgentLoop(
         instructionId: event.instructionId,
         streamId: event.streamId,
         round: event.round,
-        ...(event.type === 'turn.act'
-          ? { next: event.next, command: event.command?.slice(0, 80) }
-          : {}),
-        ...(event.type === 'turn.judge'
-          ? { satisfied: event.satisfied }
-          : {}),
-        ...(event.type === 'turn.visual_evidence'
-          ? {
-              evidenceId: event.evidenceId,
-              regions: event.regions?.length,
-              hasAnnotated: Boolean(event.annotatedDataUrl),
-              hasScreenshot: Boolean(event.screenshotDataUrl),
-              bindAsCandidate: event.bindAsCandidate,
-            }
+        ...(event.type === 'turn.plan'
+          ? { strategy: event.strategy, command: event.command?.slice(0, 80) }
           : {}),
       });
       onEvent?.(event);
@@ -212,7 +236,7 @@ export function createAgentLoop(
       rec.activePlaygroundRequestId = undefined;
     }
     try {
-      await executor.abort('judge failure limit');
+      await executor.abort('agent loop stop');
     } catch {
       // ignore
     }
@@ -223,11 +247,12 @@ export function createAgentLoop(
     reason: string,
     stopDevice = false,
   ): Promise<Episode> {
-    if (isTerminal(rec.episode.status)) {
+    if (isTerminalStatus(rec.episode.status)) {
       return structuredClone(rec.episode);
     }
     rec.abortRequested = true;
     rec.episode.status = 'failed';
+    rec.pendingCommand = undefined;
     touch(rec);
     if (stopDevice) {
       await stopMidscene(rec);
@@ -244,19 +269,14 @@ export function createAgentLoop(
     return requireEpisode(episodes, episodeId);
   }
 
-  function isTerminal(status: Episode['status']): boolean {
-    return (
-      status === 'completed' || status === 'failed' || status === 'aborted'
-    );
-  }
-
   function applyAbort(rec: EpisodeRecord, reason = 'aborted by user'): Episode {
-    if (isTerminal(rec.episode.status) && rec.episode.status !== 'aborted') {
+    if (isTerminalStatus(rec.episode.status) && rec.episode.status !== 'aborted') {
       return structuredClone(rec.episode);
     }
     const already = rec.episode.status === 'aborted';
     rec.abortRequested = true;
     rec.episode.status = 'aborted';
+    rec.pendingCommand = undefined;
     const playgroundId = rec.activePlaygroundRequestId;
     if (playgroundId) {
       try {
@@ -284,258 +304,17 @@ export function createAgentLoop(
     }
   }
 
-  async function doPrecondition(rec: EpisodeRecord): Promise<Episode> {
-    throwIfAborted(rec);
-    if (!hasPreconditions(rec.episode.instruction)) {
-      rec.episode.status = 'acting';
-      touch(rec);
-      return doAct(rec);
-    }
-
-    rec.episode.status = 'checking_precondition';
-    log('info', 'phase precondition start', {
-      episodeId: rec.episode.episodeId,
-      round: rec.episode.round,
-    });
-    const text = await askPhaseLlm(phaseLlm, rec, 'precondition');
-    throwIfAborted(rec);
-    const parsed = parsePrecondition(text);
-    const turn: PreconditionTurn = {
-      turnId: randomUUID(),
-      at: nowIso(),
-      ...parsed,
-    };
-    rec.episode.lastPrecondition = turn;
-    appendTurn(rec, { kind: 'precondition', turn });
-
-    const command = actNlCommand(turn.toolCalls);
-    emit({
-      ...baseEvent(rec),
-      type: 'turn.precondition',
-      met: turn.met,
-      command,
-      evidence: turn.evidence,
-      reason: turn.reason,
-    });
-
-    if (turn.met) {
-      rec.episode.consecutivePreconditionFailures = 0;
-      rec.episode.status = 'acting';
-      log('info', 'phase precondition met → act', {
-        episodeId: rec.episode.episodeId,
-      });
-      touch(rec);
-      return structuredClone(rec.episode);
-    }
-
-    const failures =
-      (rec.episode.consecutivePreconditionFailures ?? 0) + 1;
-    rec.episode.consecutivePreconditionFailures = failures;
-
-    if (!command) {
-      return await applyFail(
-        rec,
-        `precondition unmet and no recovery command: ${turn.reason ?? turn.evidence}`,
-        true,
-      );
-    }
-    if (failures >= maxPreconditionFailures) {
-      return await applyFail(
-        rec,
-        `precondition unmet ${failures} consecutive times (limit ${maxPreconditionFailures}): ${turn.reason ?? turn.evidence}`,
-        true,
-      );
-    }
-
-    rec.dispatchOrigin = 'precondition';
-    rec.episode.status = 'dispatching';
-    // stash toolCalls on lastAct-compatible path: doDispatch reads lastAct
-    rec.episode.lastAct = {
-      turnId: turn.turnId,
-      at: turn.at,
-      raw: turn.raw,
-      next: 'act',
-      toolCalls: turn.toolCalls,
-      evidence: turn.evidence,
-    };
-    log('info', 'phase precondition unmet → dispatch', {
-      episodeId: rec.episode.episodeId,
-      failures,
-      command: command.slice(0, 80),
-    });
-    touch(rec);
-    return structuredClone(rec.episode);
-  }
-
-  async function doAct(rec: EpisodeRecord): Promise<Episode> {
-    throwIfAborted(rec);
-    rec.episode.status = 'acting';
-    log('info', 'phase act start', {
-      episodeId: rec.episode.episodeId,
-      round: rec.episode.round,
-    });
-    const text = await askPhaseLlm(phaseLlm, rec, 'act');
-    throwIfAborted(rec);
-    const parsed = parseAct(text);
-    const act: ActTurn = {
-      turnId: randomUUID(),
-      at: nowIso(),
-      ...parsed,
-    };
-    rec.episode.lastAct = act;
-    appendTurn(rec, { kind: 'act', turn: act });
-
-    const command = actNlCommand(act.toolCalls);
-    emit({
-      ...baseEvent(rec),
-      type: 'turn.act',
-      next: act.next,
-      command,
-      evidence: act.evidence,
-    });
-
-    rec.episode.status =
-      act.next === 'act' && command ? 'dispatching' : 'judging';
-    if (rec.episode.status === 'dispatching') {
-      rec.dispatchOrigin = 'act';
-    }
-    log('info', 'phase act done', {
-      episodeId: rec.episode.episodeId,
-      next: act.next,
-      nextStatus: rec.episode.status,
-      command: command?.slice(0, 80),
-    });
-    touch(rec);
-    return structuredClone(rec.episode);
-  }
-
-  async function doDispatch(
-    rec: EpisodeRecord,
-    toolCalls?: OpaqueJson,
-  ): Promise<Episode> {
-    throwIfAborted(rec);
-    rec.episode.status = 'dispatching';
-
-    let calls: ToolCall[] = rec.episode.lastAct?.toolCalls ?? [];
-    if (Array.isArray(toolCalls)) {
-      calls = toolCalls as ToolCall[];
-    }
-
-    const command = actNlCommand(calls);
-    log('info', 'phase dispatch start', {
-      episodeId: rec.episode.episodeId,
-      command: command?.slice(0, 80),
-      viaPlayground: Boolean(runActNlViaPlayground),
-    });
-    let results: OpaqueJson[];
-
-    if (!command) {
-      results = [
-        { ok: false, name: ACT_NL_TOOL, error: 'empty act_nl command' },
-      ];
-    } else {
-      const requestId = randomUUID();
-      emit({
-        ...baseEvent(rec),
-        type: 'turn.playground_run',
-        requestId,
-        command,
-      });
-
-      rec.activePlaygroundRequestId = requestId;
-      let freeform = runActNlViaPlayground
-        ? await runActNlViaPlayground({ command, requestId })
-        : null;
-      rec.activePlaygroundRequestId = undefined;
-      throwIfAborted(rec);
-
-      if (!freeform) {
-        log('info', 'dispatch fallback freeform', {
-          episodeId: rec.episode.episodeId,
-          requestId,
-        });
-        freeform = await executor.freeformExecute(command);
-        throwIfAborted(rec);
-      }
-
-      results = [
-        {
-          ok: freeform.ok,
-          name: ACT_NL_TOOL,
-          prompt: freeform.prompt,
-          durationMs: freeform.durationMs,
-          result: summarizeMidsceneResult(freeform.result) ?? null,
-          error: freeform.error,
-          requestId,
-        },
-      ];
-    }
-
-    appendTurn(rec, { kind: 'tool_result', at: nowIso(), results });
-
-    const first = results[0] as {
-      ok?: boolean;
-      error?: string;
-      durationMs?: number;
-      result?: unknown;
-      prompt?: string;
-    };
-    emit({
-      ...baseEvent(rec),
-      type: 'turn.tool_result',
-      ok: first?.ok === true,
-      command: first?.prompt ?? command,
-      durationMs: first?.durationMs,
-      error: first?.error,
-      resultPreview: summarizeMidsceneResult(first?.result),
-    });
-
-    rec.episode.status =
-      rec.dispatchOrigin === 'precondition'
-        ? 'checking_precondition'
-        : 'judging';
-    rec.dispatchOrigin = undefined;
-    log('info', 'phase dispatch done', {
-      episodeId: rec.episode.episodeId,
-      ok: first?.ok === true,
-      durationMs: first?.durationMs,
-      nextStatus: rec.episode.status,
-    });
-    touch(rec);
-    return structuredClone(rec.episode);
-  }
-
   async function maybeCompileVisualEvidence(
     rec: EpisodeRecord,
-    judge: JudgeTurn,
+    evidence: string,
+    satisfied: boolean,
     terminal: boolean,
   ): Promise<void> {
     const mode = resolveVisualEvidenceMode();
-    log('info', 'visual evidence begin', {
-      episodeId: rec.episode.episodeId,
-      mode,
-      terminal,
-      satisfied: judge.satisfied,
-      hasScreenshot: Boolean(rec.lastScreenshotBase64),
-      actions: rec.episode.instruction.actions?.length ?? 0,
-      hints: rec.episode.instruction.hints?.length ?? 0,
-    });
-    if (mode === 'off') {
-      log('info', 'visual evidence skipped mode=off');
-      return;
-    }
-    if (mode === 'final' && !terminal) {
-      log('info', 'visual evidence skipped non-terminal (mode=final)');
-      return;
-    }
-    if (mode === 'failed' && !(terminal && !judge.satisfied)) {
-      log('info', 'visual evidence skipped (mode=failed, not failed terminal)');
-      return;
-    }
-    if (rec.abortRequested) {
-      log('warn', 'visual evidence skipped abortRequested');
-      return;
-    }
+    if (mode === 'off') return;
+    if (mode === 'final' && !terminal) return;
+    if (mode === 'failed' && !(terminal && !satisfied)) return;
+    if (rec.abortRequested) return;
 
     const t0 = Date.now();
     try {
@@ -544,36 +323,17 @@ export function createAgentLoop(
         instruction: rec.episode.instruction,
         episodeId: rec.episode.episodeId,
         phase: 'judge',
-        textEvidence: judge.evidence,
-        judgeSatisfied: judge.satisfied,
+        textEvidence: evidence,
+        judgeSatisfied: satisfied,
         screenshotBase64: rec.lastScreenshotBase64,
       });
-      if (!ve) {
-        log('warn', 'visual evidence null (no screenshot)', {
-          episodeId: rec.episode.episodeId,
-          ms: Date.now() - t0,
-        });
-        return;
-      }
+      if (!ve) return;
       rec.lastVisualEvidence = ve;
 
-      // Judge 成功：末步直接 Golden；否则 candidate 待下游验证
-      const bindOk = Boolean(judge.satisfied && ve.screenshot.dataUrl);
+      const bindOk = Boolean(satisfied && ve.screenshot.dataUrl);
       const caseTail = isCaseTailInstruction(rec.episode.instruction.metadata);
       const bindAsGolden = bindOk && caseTail;
       const bindAsCandidate = bindOk && !caseTail;
-
-      log('info', 'visual evidence compiled', {
-        episodeId: rec.episode.episodeId,
-        ms: Date.now() - t0,
-        regions: ve.regions.length,
-        hit: ve.regions.filter((r) => r.locateOk).length,
-        bindAsCandidate,
-        bindAsGolden,
-        caseTail,
-        annotatedLen: ve.annotated.dataUrl?.length ?? 0,
-        screenshotLen: ve.screenshot.dataUrl?.length ?? 0,
-      });
 
       const saved = persistVisualEvidencePng({
         evidenceId: ve.evidenceId,
@@ -587,16 +347,6 @@ export function createAgentLoop(
         localPath = saved.localPath;
         fileUrl = saved.fileUrl;
         imageHttpUrl = saved.httpUrl;
-        log('info', 'visual evidence persisted', {
-          evidenceId: ve.evidenceId,
-          kind: saved.kind,
-          localPath: saved.localPath,
-          httpUrl: saved.httpUrl,
-        });
-      } else {
-        log('warn', 'visual evidence persist failed', {
-          evidenceId: ve.evidenceId,
-        });
       }
 
       if (bindOk) {
@@ -607,9 +357,9 @@ export function createAgentLoop(
         const stored = visualEvidenceToStored(ve, {
           caseId,
           round: rec.episode.round,
-          judgeReason: judge.reason,
+          judgeReason: evidence,
           reviewStatus: caseTail ? 'approved' : 'pending',
-          reviewer: caseTail ? 'case-tail' : 'judge-pass',
+          reviewer: caseTail ? 'case-tail' : 'plan-pass',
           reviewNote: caseTail
             ? 'last instruction — no successor required'
             : 'awaiting successor instruction success',
@@ -617,7 +367,7 @@ export function createAgentLoop(
             ? {
                 status: 'true_positive',
                 validatedAt: new Date().toISOString(),
-                note: '末步无需下游验证；Judge 成功即 Golden',
+                note: '末步无需下游验证；Plan pass 即 Golden',
               }
             : {
                 status: 'awaiting_successor',
@@ -643,12 +393,6 @@ export function createAgentLoop(
           ...rec.episode.instruction,
           metadata: meta,
         };
-        log('info', 'visual evidence bound', {
-          episodeId: rec.episode.episodeId,
-          evidenceId: ve.evidenceId,
-          as: caseTail ? 'golden(case-tail)' : 'candidate',
-          imageHttpUrl,
-        });
       }
 
       const annotatedDataUrl = sseSafeImage(ve.annotated.dataUrl, 'annotated');
@@ -672,9 +416,14 @@ export function createAgentLoop(
           phrase: r.phrase,
           locateOk: r.locateOk,
         })),
-        judgeSatisfied: judge.satisfied,
+        planPassed: satisfied,
         bindAsCandidate,
         bindAsGolden,
+      });
+      log('info', 'visual evidence done', {
+        episodeId: rec.episode.episodeId,
+        ms: Date.now() - t0,
+        satisfied,
       });
     } catch (error) {
       log('error', 'visual evidence failed', {
@@ -685,78 +434,240 @@ export function createAgentLoop(
     }
   }
 
-  async function doJudge(rec: EpisodeRecord): Promise<Episode> {
+  async function runPlan(rec: EpisodeRecord): Promise<Episode> {
     throwIfAborted(rec);
-    rec.episode.status = 'judging';
-    log('info', 'phase judge start', {
+    rec.episode.status = 'plan';
+    log('info', 'phase plan start', {
       episodeId: rec.episode.episodeId,
       round: rec.episode.round,
     });
-    const text = await askPhaseLlm(phaseLlm, rec, 'judge');
+
+    let text = await askPhaseLlm(phaseLlm, rec, 'plan');
     throwIfAborted(rec);
-    const parsed = parseJudge(text);
-    const judge: JudgeTurn = {
+    let parsed = parsePlan(text);
+
+    for (let repair = 0; repair <= limits.maxIllegalRepairs; repair++) {
+      const needsCommand =
+        parsed.strategy === 'act' || parsed.strategy === 'recovery';
+      const check = needsCommand
+        ? validateMidsceneNlCommand(parsed.command, { required: true })
+        : parsed.strategy === 'illegal' || !parsed.evidence.trim()
+          ? {
+              ok: false as const,
+              reason:
+                parsed.strategy === 'illegal'
+                  ? parsed.evidence || 'illegal strategy'
+                  : 'evidence is required',
+            }
+          : { ok: true as const };
+
+      if (check.ok && parsed.strategy !== 'illegal') break;
+
+      if (repair >= limits.maxIllegalRepairs) {
+        return await applyFail(
+          rec,
+          `plan illegal after ${repair} repairs: ${'reason' in check ? check.reason : parsed.evidence}`,
+          true,
+        );
+      }
+
+      const rejected =
+        parsed.command ??
+        (parsed.strategy === 'illegal' ? '(illegal)' : '(missing)');
+      log('warn', 'plan rejected — re-prompt', {
+        episodeId: rec.episode.episodeId,
+        strategy: parsed.strategy,
+        command: parsed.command,
+        reason: 'reason' in check ? check.reason : 'illegal',
+        repair: repair + 1,
+      });
+      const repairText = buildCommandRepairPrompt({
+        phase: 'plan',
+        rejectedCommand: rejected,
+        reason: 'reason' in check ? check.reason : parsed.evidence,
+        previousRaw: parsed.raw,
+        evidence: parsed.evidence,
+      });
+      text = await askPhaseLlmRepair(phaseLlm, rec, 'plan', repairText);
+      throwIfAborted(rec);
+      parsed = parsePlan(text);
+    }
+
+    const turn: PlanTurn = {
       turnId: randomUUID(),
       at: nowIso(),
       ...parsed,
     };
-    rec.episode.lastJudge = judge;
-    appendTurn(rec, { kind: 'judge', turn: judge });
-
-    const round = (rec.episode.round ?? 0) + 1;
-    rec.episode.round = round;
+    rec.episode.lastPlan = turn;
+    appendTurn(rec, { kind: 'plan', turn });
 
     emit({
       ...baseEvent(rec),
-      type: 'turn.judge',
-      satisfied: judge.satisfied,
-      reason: judge.reason,
-      evidence: judge.evidence,
-      continue: judge.continue,
-      preconditionMet: judge.preconditionMet,
+      type: 'turn.plan',
+      strategy: turn.strategy,
+      command: turn.command,
+      evidence: turn.evidence,
     });
 
-    if (judge.satisfied) {
-      rec.episode.consecutiveJudgeFailures = 0;
+    const tr = transitionFromPlan({
+      strategy: turn.strategy,
+      command: turn.command,
+      evidence: turn.evidence,
+      planRound: rec.episode.round ?? 0,
+      consecutiveRecovery: rec.episode.consecutiveRecoveryFailures ?? 0,
+      limits,
+    });
+
+    if (tr.next === 'plan' && 'needRepair' in tr && tr.needRepair) {
+      // 校验层应已耗尽；再非法则失败
+      return await applyFail(rec, tr.reason, true);
+    }
+
+    if (tr.next === 'failed') {
+      await maybeCompileVisualEvidence(rec, turn.evidence, false, true);
+      return await applyFail(rec, tr.reason, tr.stopDevice ?? true);
+    }
+
+    if (tr.next === 'completed') {
+      rec.episode.round = tr.planRound;
+      rec.episode.consecutiveRecoveryFailures = 0;
       rec.episode.status = 'completed';
-      // VE 在 completed 之前：对话顺序 judge → VE → completed；locate 已有超时
-      await maybeCompileVisualEvidence(rec, judge, true);
+      await maybeCompileVisualEvidence(rec, turn.evidence, true, true);
       emit({
         ...baseEvent(rec),
         type: 'episode.completed',
         satisfied: true,
-        reason: judge.reason,
+        reason: turn.evidence,
       });
+      touch(rec);
+      return structuredClone(rec.episode);
+    }
+
+    if (tr.next !== 'act') {
+      return await applyFail(rec, 'unexpected plan transition', true);
+    }
+
+    // → act
+    rec.episode.round = tr.planRound;
+    rec.episode.consecutiveRecoveryFailures = tr.consecutiveRecovery;
+    rec.pendingCommand = tr.pendingCommand;
+    rec.planIntent = tr.planIntent;
+    rec.episode.status = 'act';
+    log('info', 'phase plan → act', {
+      episodeId: rec.episode.episodeId,
+      intent: tr.planIntent,
+      command: tr.pendingCommand.slice(0, 80),
+    });
+    touch(rec);
+    return structuredClone(rec.episode);
+  }
+
+  async function runAct(rec: EpisodeRecord): Promise<Episode> {
+    throwIfAborted(rec);
+    rec.episode.status = 'act';
+
+    const command =
+      rec.pendingCommand?.trim() ||
+      actNlCommand(rec.episode.lastPlan?.toolCalls ?? []) ||
+      '';
+
+    log('info', 'phase act start', {
+      episodeId: rec.episode.episodeId,
+      intent: rec.planIntent,
+      command,
+      viaPlayground: Boolean(runActNlViaPlayground),
+    });
+
+    let results: OpaqueJson[];
+    let ok = false;
+    let error: string | undefined;
+    let durationMs: number | undefined;
+    let prompt = command;
+    let resultPreview: string | undefined;
+
+    if (!command) {
+      results = [
+        { ok: false, name: ACT_NL_TOOL, error: 'empty act_nl command' },
+      ];
+      error = 'empty act_nl command';
     } else {
-      const consecutiveFailures =
-        (rec.episode.consecutiveJudgeFailures ?? 0) + 1;
-      rec.episode.consecutiveJudgeFailures = consecutiveFailures;
-      log('info', 'judge unsatisfied', {
-        episodeId: rec.episode.episodeId,
-        consecutiveFailures,
-        maxJudgeFailures,
-        continue: judge.continue,
+      const requestId = randomUUID();
+      emit({
+        ...baseEvent(rec),
+        type: 'turn.playground_run',
+        requestId,
+        command,
       });
 
-      if (consecutiveFailures >= maxJudgeFailures) {
-        await maybeCompileVisualEvidence(rec, judge, true);
-        return await applyFail(
-          rec,
-          `judge unsatisfied ${consecutiveFailures} consecutive times (limit ${maxJudgeFailures}): ${judge.reason}`,
-          true,
-        );
+      rec.activePlaygroundRequestId = requestId;
+      let freeform = runActNlViaPlayground
+        ? await runActNlViaPlayground({ command, requestId })
+        : null;
+      rec.activePlaygroundRequestId = undefined;
+      throwIfAborted(rec);
+
+      if (!freeform) {
+        freeform = await executor.freeformExecute(command);
+        throwIfAborted(rec);
       }
-      if (judge.continue !== false && round < maxRounds) {
-        // Judge 失败 → 回到 precondition（分步），不要直接塞满 act 上下文
-        rec.episode.status = 'checking_precondition';
-        if (resolveVisualEvidenceMode() === 'always') {
-          await maybeCompileVisualEvidence(rec, judge, false);
-        }
-      } else {
-        await maybeCompileVisualEvidence(rec, judge, true);
-        return await applyFail(rec, judge.reason, true);
-      }
+
+      ok = freeform.ok;
+      error = freeform.error;
+      durationMs = freeform.durationMs;
+      prompt = freeform.prompt || command;
+      resultPreview = summarizeMidsceneResult(freeform.result);
+      results = [
+        {
+          ok,
+          name: ACT_NL_TOOL,
+          prompt,
+          durationMs,
+          result: resultPreview ?? null,
+          error,
+          requestId,
+        },
+      ];
     }
+
+    appendTurn(rec, { kind: 'tool_result', at: nowIso(), results });
+    emit({
+      ...baseEvent(rec),
+      type: 'turn.tool_result',
+      ok,
+      command: prompt,
+      durationMs,
+      error,
+      resultPreview,
+    });
+
+    const tr = transitionFromAct({
+      actResult: ok ? 'success' : 'failure',
+      consecutiveActFailures: rec.episode.consecutiveActFailures ?? 0,
+      limits,
+      error,
+    });
+
+    rec.pendingCommand = undefined;
+    rec.planIntent = undefined;
+
+    if (tr.next === 'failed') {
+      rec.episode.consecutiveActFailures = tr.consecutiveActFailures;
+      await maybeCompileVisualEvidence(
+        rec,
+        error ?? tr.reason,
+        false,
+        true,
+      );
+      return await applyFail(rec, tr.reason, true);
+    }
+
+    rec.episode.consecutiveActFailures = tr.consecutiveActFailures;
+    rec.episode.status = 'plan';
+    log('info', 'phase act → plan', {
+      episodeId: rec.episode.episodeId,
+      ok,
+      consecutiveActFailures: tr.consecutiveActFailures,
+    });
     touch(rec);
     return structuredClone(rec.episode);
   }
@@ -773,8 +684,8 @@ export function createAgentLoop(
         instruction,
         turns: [],
         round: 0,
-        consecutiveJudgeFailures: 0,
-        consecutivePreconditionFailures: 0,
+        consecutiveRecoveryFailures: 0,
+        consecutiveActFailures: 0,
         createdAt: ts,
         updatedAt: ts,
       };
@@ -791,10 +702,7 @@ export function createAgentLoop(
         type: 'episode.started',
         expectationPreview: expectationPreview(instruction),
       });
-      // 首相位：有 preconditions 则先检查，否则直接 act
-      rec.episode.status = hasPreconditions(instruction)
-        ? 'checking_precondition'
-        : 'acting';
+      rec.episode.status = 'plan';
       touch(rec);
       if (rec.streamId && pendingAbortStreamIds.has(rec.streamId)) {
         pendingAbortStreamIds.delete(rec.streamId);
@@ -809,12 +717,11 @@ export function createAgentLoop(
         instructionId: instruction.instructionId,
         streamId: streamIdOf(instruction),
         expectation: expectationText(instruction).slice(0, 80),
-        actions: instruction.actions?.length ?? 0,
       });
       const episode = await port.openEpisode(instruction);
       const rec = get(episode.episodeId);
       try {
-        while (!isTerminal(rec.episode.status)) {
+        while (!isTerminalStatus(rec.episode.status)) {
           if (rec.abortRequested) {
             applyAbort(rec);
             break;
@@ -841,7 +748,6 @@ export function createAgentLoop(
         status: result.status,
         satisfied: result.satisfied,
         ms: Date.now() - t0,
-        hasVisualEvidence: Boolean(result.visualEvidence),
       });
       return result;
     },
@@ -850,7 +756,7 @@ export function createAgentLoop(
       const rec = get(episodeId);
       const { status } = rec.episode;
 
-      if (isTerminal(status)) {
+      if (isTerminalStatus(status)) {
         return structuredClone(rec.episode);
       }
       if (rec.abortRequested) {
@@ -858,48 +764,13 @@ export function createAgentLoop(
       }
 
       try {
-        if (status === 'checking_precondition') {
-          const last = rec.episode.turns[rec.episode.turns.length - 1];
-          // dispatch 回来后 last 是 tool_result → 再检查 precondition
-          if (last?.kind === 'precondition' && last.turn.met) {
-            return await doAct(rec);
-          }
-          if (
-            last?.kind === 'precondition' &&
-            !last.turn.met &&
-            actNlCommand(last.turn.toolCalls)
-          ) {
-            return await doDispatch(rec);
-          }
-          return await doPrecondition(rec);
+        if (status === 'plan' || status === 'open') {
+          return await runPlan(rec);
         }
-
-        if (status === 'open' || status === 'acting') {
-          const last = rec.episode.turns[rec.episode.turns.length - 1];
-          if (status === 'acting' && last?.kind === 'act') {
-            if (
-              rec.episode.lastAct?.next === 'act' &&
-              actNlCommand(rec.episode.lastAct.toolCalls)
-            ) {
-              return await doDispatch(rec);
-            }
-            return await doJudge(rec);
-          }
-          return await doAct(rec);
+        if (status === 'act') {
+          return await runAct(rec);
         }
-
-        if (status === 'dispatching') return await doDispatch(rec);
-
-        if (status === 'judging') {
-          const last = rec.episode.turns[rec.episode.turns.length - 1];
-          // judge 失败后 status 已改为 checking_precondition；此处仅处理待执行 judge
-          if (last?.kind === 'judge') {
-            return await doPrecondition(rec);
-          }
-          return await doJudge(rec);
-        }
-
-        return await doPrecondition(rec);
+        return structuredClone(rec.episode);
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         if (message === 'EPISODE_ABORTED') {
@@ -909,17 +780,13 @@ export function createAgentLoop(
       }
     },
 
-    async askLlm(episodeId, phase: LlmPhase) {
+    async askLlm(episodeId, _phase: LlmPhase) {
       const rec = get(episodeId);
-      if (rec.abortRequested || isTerminal(rec.episode.status)) {
+      if (rec.abortRequested || isTerminalStatus(rec.episode.status)) {
         return structuredClone(rec.episode);
       }
       try {
-        return phase === 'precondition'
-          ? await doPrecondition(rec)
-          : phase === 'act'
-            ? await doAct(rec)
-            : await doJudge(rec);
+        return await runPlan(rec);
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         if (message === 'EPISODE_ABORTED') {
@@ -931,11 +798,19 @@ export function createAgentLoop(
 
     async dispatchTools(episodeId, toolCalls) {
       const rec = get(episodeId);
-      if (rec.abortRequested || isTerminal(rec.episode.status)) {
+      if (rec.abortRequested || isTerminalStatus(rec.episode.status)) {
         return structuredClone(rec.episode);
       }
       try {
-        return await doDispatch(rec, toolCalls);
+        if (Array.isArray(toolCalls) && toolCalls.length) {
+          const cmd = actNlCommand(toolCalls as never);
+          if (cmd) {
+            rec.pendingCommand = cmd;
+            rec.planIntent = rec.planIntent ?? 'act';
+          }
+        }
+        rec.episode.status = 'act';
+        return await runAct(rec);
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         if (message === 'EPISODE_ABORTED') {
@@ -963,7 +838,7 @@ export function createAgentLoop(
 
     async closeEpisode(episodeId) {
       const rec = get(episodeId);
-      if (!isTerminal(rec.episode.status)) {
+      if (!isTerminalStatus(rec.episode.status)) {
         return applyAbort(rec, 'closed');
       }
       touch(rec);
@@ -978,7 +853,7 @@ export function createAgentLoop(
       const needle = streamId.trim();
       if (!needle) return null;
       for (const rec of episodes.values()) {
-        if (rec.streamId === needle && !isTerminal(rec.episode.status)) {
+        if (rec.streamId === needle && !isTerminalStatus(rec.episode.status)) {
           pendingAbortStreamIds.delete(needle);
           return applyAbort(rec);
         }
@@ -989,7 +864,6 @@ export function createAgentLoop(
           return structuredClone(rec.episode);
         }
       }
-      // Episode 尚未 open：登记 pending，open 时立即 abort
       pendingAbortStreamIds.add(needle);
       return null;
     },
