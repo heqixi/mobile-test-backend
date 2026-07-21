@@ -886,5 +886,80 @@
     ],
     "compiledAt": "2026-07-21T06:36:49.839Z",
     "sourceTag": "panel-edit"
+  },
+  "cowork-8a42001967fd": {
+    "caseId": "cowork-8a42001967fd",
+    "instructions": [
+      {
+        "instructionId": "f6f117fd-3e79-4c13-b343-993a436ff2c9",
+        "expectation": "界面已切换至相机取景页面，可见相机取景区域及拍照按钮",
+        "preconditions": "已在WPS首页，且页面中存在用于拍照挂载的拍照入口控件",
+        "actions": [
+          "启动WPS，进入首页",
+          "点击底部输入框拍照入口控件，进入相机界面"
+        ],
+        "hints": [
+          "拍照入口控件文案可能因版本不同而有所差异，可通过控件角色（拍照/相机图标或文字）识别"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-8a42001967fd",
+          "stepId": "step-1",
+          "stepOrder": 1,
+          "title": "预览挂载图片",
+          "source": "cowork-csv",
+          "stepText": "点击拍照进入相机",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      },
+      {
+        "instructionId": "fd8bcb1c-0b78-44d1-9a34-0b12314ce4f4",
+        "expectation": "界面退出相机预览页，返回到拍照挂载的后续界面（如图片预览/编辑页），并显示刚拍摄的照片",
+        "preconditions": "相机已打开，用户已完成拍照，界面显示拍摄的照片预览及确认/取消按钮",
+        "actions": [
+          "点击确认按钮以选择拍摄的照片"
+        ],
+        "hints": [
+          "确认按钮可能显示为'确认'、'√'、'使用照片'等文案，需通过控件角色（确认/保存类按钮）定位",
+          "若确认按钮不可见，可能需要滑动或等待预览图加载完成"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-8a42001967fd",
+          "stepId": "step-2",
+          "stepOrder": 2,
+          "title": "预览挂载图片",
+          "source": "cowork-csv",
+          "stepText": "拍摄后点击确认",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      },
+      {
+        "instructionId": "0b53e4da-56a8-43a0-8abd-ee94067b7a9d",
+        "expectation": "键盘收起，界面进入图片预览状态，显示已拍摄的图片内容",
+        "preconditions": "已处于拍照/挂载界面，界面中包含输入框及其上方的图片元素，键盘可能已弹出",
+        "actions": [
+          "点击输入框上方的图片以进入图片预览"
+        ],
+        "hints": [
+          "图片元素位于输入框左上角，可能是缩略图或预览图"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-8a42001967fd",
+          "stepId": "step-3",
+          "stepOrder": 3,
+          "title": "预览挂载图片",
+          "source": "cowork-csv",
+          "stepText": "点击输入框上方的图片",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      }
+    ],
+    "compiledAt": "2026-07-21T07:43:44.788Z",
+    "sourceTag": "panel-edit"
   }
 }
