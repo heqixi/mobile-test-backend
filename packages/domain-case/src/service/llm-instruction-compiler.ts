@@ -58,17 +58,21 @@ function resolveOpenCodeModel(
   explicit?: { providerID: string; modelID: string },
 ): { providerID: string; modelID: string } {
   if (explicit?.providerID && explicit?.modelID) return explicit;
-  return {
-    providerID:
-      process.env.OPENCODE_PROVIDER_ID?.trim() ||
-      process.env.MTP_OPENCODE_PROVIDER_ID?.trim() ||
-      'unsloth_studio',
-    modelID:
-      process.env.OPENCODE_MODEL_ID?.trim() ||
-      process.env.MTP_OPENCODE_MODEL_ID?.trim() ||
-      process.env.MIDSCENE_MODEL_NAME?.trim() ||
-      'Qwen3.5-9B',
-  };
+  const providerID =
+    process.env.OPENCODE_PROVIDER_ID?.trim() ||
+    process.env.MTP_OPENCODE_PROVIDER_ID?.trim() ||
+    '';
+  const modelID =
+    process.env.OPENCODE_MODEL_ID?.trim() ||
+    process.env.MTP_OPENCODE_MODEL_ID?.trim() ||
+    process.env.MIDSCENE_MODEL_NAME?.trim() ||
+    '';
+  if (!providerID || !modelID) {
+    throw new Error(
+      'OpenCode model not configured. Set OPENCODE_PROVIDER_ID and OPENCODE_MODEL_ID in .env (see .env.example). Optional: MIDSCENE_MODEL_NAME as modelID fallback.',
+    );
+  }
+  return { providerID, modelID };
 }
 
 function extractJsonObject(text: string): unknown {
