@@ -1,0 +1,252 @@
+.screenshot-viewer {
+  flex-direction: column;
+  height: 100%;
+  display: flex;
+}
+
+.screenshot-viewer.screen-only {
+  min-height: 0;
+}
+
+.screenshot-viewer.screen-only > .screenshot-content {
+  flex: 1;
+  justify-content: center;
+  align-items: center;
+  min-height: 0;
+  display: flex;
+}
+
+.screenshot-viewer.screen-only > .screenshot-content .screenshot-image-shell {
+  flex: 0 auto;
+  width: -moz-fit-content;
+  width: fit-content;
+  max-width: 100%;
+  height: -moz-fit-content;
+  height: fit-content;
+  max-height: 100%;
+  line-height: 0;
+  display: inline-flex;
+}
+
+.screenshot-viewer.screen-only > .screenshot-content .screenshot-image {
+  object-fit: contain;
+  object-position: center center;
+  border-radius: 0;
+  flex: 0 auto;
+  width: auto;
+  min-width: 0;
+  max-width: 100%;
+  height: auto;
+  min-height: 0;
+  max-height: 100%;
+  display: block;
+}
+
+.screenshot-viewer.offline, .screenshot-viewer.loading, .screenshot-viewer.error {
+  text-align: center;
+  color: #666;
+  justify-content: center;
+  align-items: center;
+}
+
+.screenshot-viewer.offline .screenshot-placeholder h3, .screenshot-viewer.loading .screenshot-placeholder h3, .screenshot-viewer.error .screenshot-placeholder h3 {
+  color: #1890ff;
+  text-transform: capitalize;
+  margin-bottom: 12px;
+  font-size: 18px;
+}
+
+.screenshot-viewer.offline .screenshot-placeholder p, .screenshot-viewer.loading .screenshot-placeholder p, .screenshot-viewer.error .screenshot-placeholder p {
+  color: #666;
+  margin: 0;
+}
+
+.screenshot-viewer.offline .screenshot-placeholder p.error-message, .screenshot-viewer.loading .screenshot-placeholder p.error-message, .screenshot-viewer.error .screenshot-placeholder p.error-message {
+  color: #ff4d4f;
+}
+
+.screenshot-viewer .screenshot-header {
+  justify-content: space-between;
+  align-items: center;
+  height: 56px;
+  display: flex;
+}
+
+.screenshot-viewer .screenshot-header .screenshot-title {
+  flex-direction: column;
+  gap: 4px;
+  display: flex;
+}
+
+.screenshot-viewer .screenshot-header .screenshot-title h3 {
+  color: #000;
+  text-transform: capitalize;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  display: flex;
+}
+
+.screenshot-viewer .screenshot-header .screenshot-title .screenshot-subtitle {
+  color: #999;
+  margin: 0;
+  font-size: 12px;
+}
+
+.screenshot-viewer .screenshot-container {
+  background: #f2f4f7;
+  border-radius: 16px;
+  flex-direction: column;
+  flex: 1;
+  padding: 0 15px;
+  display: flex;
+  overflow: hidden;
+}
+
+.screenshot-viewer .screenshot-container .screenshot-overlay {
+  z-index: 10;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 12px 5px 8px;
+  display: flex;
+}
+
+.screenshot-viewer .screenshot-container .screenshot-overlay .device-name-overlay {
+  color: rgba(0, 0, 0, .85);
+  text-transform: capitalize;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  display: flex;
+}
+
+.screenshot-viewer .screenshot-container .screenshot-overlay .device-name-overlay .info-icon {
+  opacity: .8;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.screenshot-viewer .screenshot-container .screenshot-overlay .device-name-overlay .info-icon:hover {
+  opacity: 1;
+}
+
+.screenshot-viewer .screenshot-container .screenshot-overlay .screenshot-controls {
+  opacity: 1;
+  box-sizing: border-box;
+  border-radius: 4px;
+  align-items: center;
+  gap: 10px;
+  height: 18px;
+  padding: 4px 8px;
+  display: flex;
+}
+
+.screenshot-viewer .screenshot-container .screenshot-overlay .screenshot-controls .last-update-time {
+  color: #666;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 12px;
+  overflow: hidden;
+}
+
+.screenshot-viewer .screenshot-container .screenshot-overlay .screenshot-controls .operation-indicator {
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  display: flex;
+}
+
+.screenshot-viewer .screenshot-container .screenshot-overlay .screenshot-controls .ant-btn {
+  box-shadow: none;
+  background: none;
+  border: none;
+  justify-content: center;
+  align-items: center;
+  width: 16px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0;
+  display: flex;
+}
+
+.screenshot-viewer .screenshot-container .screenshot-overlay .screenshot-controls .ant-btn:hover {
+  background-color: rgba(0, 0, 0, .06);
+  border-radius: 2px;
+  transition: all .2s;
+  transform: scale(1.1);
+}
+
+.screenshot-viewer .screenshot-container .screenshot-overlay .screenshot-controls .ant-btn .anticon {
+  color: #666;
+  font-size: 12px;
+  transition: color .2s;
+}
+
+.screenshot-viewer .screenshot-container .screenshot-content {
+  flex: 1;
+  justify-content: center;
+  align-items: center;
+  min-height: 0;
+  display: flex;
+}
+
+.screenshot-viewer .screenshot-container .screenshot-content .screenshot-image {
+  object-fit: contain;
+  border-radius: 12px;
+  max-width: 100%;
+  height: auto;
+  max-height: 100%;
+}
+
+.screenshot-viewer .screenshot-container .screenshot-content .screenshot-placeholder {
+  text-align: center;
+  color: #999;
+}
+
+[data-theme="dark"] .screenshot-viewer.offline, [data-theme="dark"] .screenshot-viewer.loading, [data-theme="dark"] .screenshot-viewer.error {
+  color: #f8fafd;
+}
+
+[data-theme="dark"] .screenshot-viewer.offline .screenshot-placeholder h3, [data-theme="dark"] .screenshot-viewer.loading .screenshot-placeholder h3, [data-theme="dark"] .screenshot-viewer.error .screenshot-placeholder h3 {
+  color: #1890ff;
+}
+
+[data-theme="dark"] .screenshot-viewer.offline .screenshot-placeholder p, [data-theme="dark"] .screenshot-viewer.loading .screenshot-placeholder p, [data-theme="dark"] .screenshot-viewer.error .screenshot-placeholder p {
+  color: #f8fafd;
+}
+
+[data-theme="dark"] .screenshot-viewer.offline .screenshot-placeholder p.error-message, [data-theme="dark"] .screenshot-viewer.loading .screenshot-placeholder p.error-message, [data-theme="dark"] .screenshot-viewer.error .screenshot-placeholder p.error-message {
+  color: #ff4d4f;
+}
+
+[data-theme="dark"] .screenshot-viewer .screenshot-header .screenshot-title h3 {
+  color: #f8fafd;
+}
+
+[data-theme="dark"] .screenshot-viewer .screenshot-header .screenshot-title .screenshot-subtitle {
+  color: rgba(255, 255, 255, .45);
+}
+
+[data-theme="dark"] .screenshot-viewer .screenshot-container {
+  background: #141414;
+}
+
+[data-theme="dark"] .screenshot-viewer .screenshot-container .screenshot-overlay .device-name-overlay, [data-theme="dark"] .screenshot-viewer .screenshot-container .screenshot-overlay .screenshot-controls .last-update-time {
+  color: #f8fafd;
+}
+
+[data-theme="dark"] .screenshot-viewer .screenshot-container .screenshot-overlay .screenshot-controls .ant-btn:hover {
+  background-color: rgba(255, 255, 255, .08);
+}
+
+[data-theme="dark"] .screenshot-viewer .screenshot-container .screenshot-overlay .screenshot-controls .ant-btn .anticon {
+  color: #f8fafd;
+}
+
+[data-theme="dark"] .screenshot-viewer .screenshot-container .screenshot-content .screenshot-placeholder {
+  color: rgba(255, 255, 255, .45);
+}
+

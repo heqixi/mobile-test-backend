@@ -1,0 +1,918 @@
+.prompt-input-wrapper {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 0 4px;
+}
+
+.prompt-input-wrapper .mode-radio-group-wrapper {
+  align-items: center;
+  gap: 8px;
+  display: flex;
+  position: relative;
+}
+
+.prompt-input-wrapper .mode-radio-group-wrapper .mode-radio-group {
+  scrollbar-width: thin;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  height: 100%;
+  margin-right: 60px;
+  display: flex;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.prompt-input-wrapper .mode-radio-group-wrapper .mode-radio-group::-webkit-scrollbar {
+  height: 6px;
+}
+
+.prompt-input-wrapper .mode-radio-group-wrapper .mode-radio-group::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.prompt-input-wrapper .mode-radio-group-wrapper .mode-radio-group::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.prompt-input-wrapper .mode-radio-group-wrapper .mode-radio-group::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+.prompt-input-wrapper .mode-radio-group-wrapper .mode-radio-group .ant-form-item {
+  flex-shrink: 0;
+  margin: 0 !important;
+}
+
+.prompt-input-wrapper .mode-radio-group-wrapper .mode-radio-group .ant-form-item .ant-radio-group {
+  flex-wrap: nowrap;
+  gap: 8px;
+  display: flex;
+}
+
+.prompt-input-wrapper .mode-radio-group-wrapper .mode-radio-group .ant-radio-button-wrapper {
+  height: 32px;
+  box-shadow: none;
+  color: #1c1f23;
+  white-space: nowrap;
+  background-color: #f1f2f3;
+  border: none;
+  border-radius: 12px;
+  flex-shrink: 0;
+  margin-right: 0;
+  padding: 0 12px;
+  font-family: Inter, PingFang SC, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Noto Sans, Ubuntu, Cantarell, Helvetica Neue, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 32px;
+}
+
+.prompt-input-wrapper .mode-radio-group-wrapper .mode-radio-group .ant-radio-button-wrapper:before {
+  display: none;
+}
+
+.prompt-input-wrapper .mode-radio-group-wrapper .mode-radio-group .ant-radio-button-wrapper:focus-within {
+  outline: none;
+}
+
+.prompt-input-wrapper .mode-radio-group-wrapper .mode-radio-group .ant-radio-button-wrapper.ant-radio-button-wrapper-checked {
+  color: #000;
+  background-color: rgba(43, 131, 255, .16);
+  border-color: rgba(0, 0, 0, 0);
+}
+
+.prompt-input-wrapper .mode-radio-group-wrapper .mode-radio-group .ant-radio-button-wrapper.ant-radio-button-wrapper-checked:hover {
+  color: #000;
+  background-color: rgba(43, 131, 255, .24);
+}
+
+.prompt-input-wrapper .mode-radio-group-wrapper .mode-radio-group .ant-dropdown-trigger {
+  flex-shrink: 0;
+}
+
+.prompt-input-wrapper .mode-radio-group-wrapper .mode-radio-group .more-apis-button {
+  height: 32px;
+  box-shadow: none;
+  color: #1c1f23;
+  white-space: nowrap;
+  background-color: #f1f2f3;
+  border: none;
+  border-radius: 12px;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 6px;
+  max-width: 160px;
+  padding: 0 12px;
+  font-family: Inter, PingFang SC, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Noto Sans, Ubuntu, Cantarell, Helvetica Neue, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  display: inline-flex;
+}
+
+.prompt-input-wrapper .mode-radio-group-wrapper .mode-radio-group .more-apis-button .ant-btn-content {
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.prompt-input-wrapper .mode-radio-group-wrapper .mode-radio-group .more-apis-button:hover {
+  background-color: #e6e7e9;
+}
+
+.prompt-input-wrapper .mode-radio-group-wrapper .mode-radio-group .more-apis-button.selected-from-dropdown {
+  color: #000;
+  background-color: rgba(43, 131, 255, .16);
+  font-weight: 500;
+}
+
+.prompt-input-wrapper .mode-radio-group-wrapper .mode-radio-group .more-apis-button.selected-from-dropdown:hover {
+  background-color: rgba(43, 131, 255, .24);
+}
+
+.prompt-input-wrapper .mode-radio-group-wrapper .action-icons {
+  z-index: 10;
+  pointer-events: none;
+  background: linear-gradient(to right, rgba(0, 0, 0, 0) 0%, rgba(255, 255, 255, .5) 20%, rgba(255, 255, 255, .8) 40%, rgba(255, 255, 255, .95) 60%, #fff 70%);
+  flex-shrink: 0;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  width: 80px;
+  padding-left: 20px;
+  display: flex;
+  position: absolute;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+}
+
+.prompt-input-wrapper .mode-radio-group-wrapper .action-icons > * {
+  pointer-events: auto;
+}
+
+.prompt-input-wrapper .main-side-console-input {
+  z-index: 1;
+  background: linear-gradient(#fff, #fff) padding-box padding-box, linear-gradient(135deg, #4285f4 0%, #06f 25%, #7b02c5 50%, #ea4335 75%, #ff7043 100%) border-box;
+  border: 1px solid rgba(0, 0, 0, 0);
+  border-radius: 12px;
+  margin-top: 10px;
+  padding-bottom: 48px;
+  position: relative;
+}
+
+@keyframes hue-shift {
+  0% {
+    -webkit-filter: hue-rotate();
+    filter: hue-rotate();
+  }
+
+  100% {
+    -webkit-filter: hue-rotate(360deg);
+    filter: hue-rotate(360deg);
+  }
+}
+
+.prompt-input-wrapper .main-side-console-input:focus-within {
+  z-index: 10;
+  box-shadow: 0 0 0 3px rgba(43, 131, 255, .16);
+}
+
+.prompt-input-wrapper .main-side-console-input .main-side-console-input-textarea {
+  resize: none;
+  white-space: pre-wrap;
+  scrollbar-width: thin;
+  background: none;
+  border: none;
+  border-radius: 0;
+  outline: none;
+  min-height: 120px;
+  padding: 12px 16px;
+  line-height: 21px;
+  transition: background-color .2s;
+  position: relative;
+  overflow-y: auto;
+}
+
+.prompt-input-wrapper .main-side-console-input .main-side-console-input-textarea:focus {
+  box-shadow: none;
+  border: none;
+  outline: none;
+}
+
+.prompt-input-wrapper .main-side-console-input .main-side-console-input-textarea:focus-visible {
+  box-shadow: none;
+  border: none;
+  outline: none;
+}
+
+.prompt-input-wrapper .main-side-console-input .main-side-console-input-textarea:after {
+  display: none;
+}
+
+.prompt-input-wrapper .main-side-console-input .main-side-console-input-textarea::-webkit-scrollbar {
+  width: 6px;
+}
+
+.prompt-input-wrapper .main-side-console-input .main-side-console-input-textarea::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, .2);
+  border-radius: 3px;
+}
+
+.prompt-input-wrapper .main-side-console-input.loading {
+  background: linear-gradient(#fff, #fff) padding-box padding-box, linear-gradient(135deg, #4285f4 0%, #06f 25%, #7b02c5 50%, #ea4335 75%, #ff7043 100%) border-box;
+  border: 1px solid rgba(0, 0, 0, 0);
+}
+
+.prompt-input-wrapper .main-side-console-input.loading:before {
+  content: "";
+  -webkit-mask-composite: xor;
+  pointer-events: none;
+  z-index: -1;
+  background: linear-gradient(135deg, #4285f4 0%, #06f 25%, #7b02c5 50%, #ea4335 75%, #ff7043 100%);
+  border-radius: 12px;
+  padding: 1px;
+  animation: 5s linear infinite hue-shift;
+  position: absolute;
+  top: -1px;
+  bottom: -1px;
+  left: -1px;
+  right: -1px;
+  -webkit-mask-image: linear-gradient(#fff 0, #fff 0), linear-gradient(#fff 0, #fff 0);
+  -webkit-mask-position: 0 0, 0 0;
+  -webkit-mask-size: auto, auto;
+  -webkit-mask-repeat: repeat, repeat;
+  -webkit-mask-clip: content-box, border-box;
+  -webkit-mask-origin: content-box, border-box;
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  -webkit-mask-source-type: auto, auto;
+  mask-mode: match-source, match-source;
+}
+
+.prompt-input-wrapper .main-side-console-input.disabled .form-controller-wrapper {
+  background-color: rgba(0, 0, 0, 0);
+}
+
+.prompt-input-wrapper .no-input-method {
+  text-align: center;
+  color: var(--midscene-text-tertiary, #666);
+  padding: 20px;
+  font-size: 14px;
+}
+
+.prompt-input-wrapper .ant-form-item-with-help + .form-controller-wrapper {
+  bottom: 14px;
+}
+
+.prompt-input-wrapper .ant-input {
+  padding-bottom: 40px;
+}
+
+.prompt-input-wrapper .form-controller-wrapper {
+  box-sizing: border-box;
+  z-index: 1000;
+  pointer-events: none;
+  background-color: rgba(0, 0, 0, 0);
+  flex-direction: row;
+  justify-content: flex-end;
+  align-items: flex-end;
+  gap: 8px;
+  width: calc(100% - 32px);
+  height: 56px;
+  padding: 12px 0;
+  line-height: 32px;
+  transition: background-color .2s;
+  display: flex;
+  position: absolute;
+  bottom: 0;
+  left: 16px;
+}
+
+.prompt-input-wrapper .form-controller-wrapper > * {
+  pointer-events: auto;
+}
+
+.prompt-input-wrapper .form-controller-wrapper .input-actions-wrapper {
+  align-items: center;
+  gap: 8px;
+  margin-right: auto;
+  line-height: normal;
+  display: inline-flex;
+}
+
+.prompt-input-wrapper .form-controller-wrapper .ant-btn-primary {
+  color: #fff;
+  background-color: #2b83ff;
+  border-color: #2b83ff;
+}
+
+.prompt-input-wrapper .form-controller-wrapper .ant-btn-primary:not(:disabled):hover, .prompt-input-wrapper .form-controller-wrapper .ant-btn-primary:not(:disabled):focus {
+  color: #fff;
+  background-color: #1a6fe6;
+  border-color: #1a6fe6;
+}
+
+.prompt-input-wrapper .form-controller-wrapper .ant-btn-primary:disabled, .prompt-input-wrapper .form-controller-wrapper .ant-btn-primary.ant-btn-loading {
+  color: #fff;
+  background-color: rgba(43, 131, 255, .5);
+  border-color: rgba(0, 0, 0, 0);
+}
+
+.prompt-input-wrapper .settings-wrapper {
+  color: #777;
+  flex-flow: wrap;
+  gap: 2px;
+  display: flex;
+}
+
+.prompt-input-wrapper .settings-wrapper.settings-wrapper-hover {
+  color: #3b3b3b;
+}
+
+.prompt-input-wrapper .structured-params-container {
+  box-sizing: border-box;
+  padding: 16px 16px 56px;
+  overflow: hidden;
+}
+
+.prompt-input-wrapper .structured-params-container .structured-params {
+  width: 100%;
+  min-width: 0;
+}
+
+.prompt-input-wrapper .structured-params-container .structured-params .ant-form-item {
+  flex-direction: column;
+  display: flex;
+}
+
+.prompt-input-wrapper .structured-params-container .structured-params .ant-form-item .ant-form-item-label {
+  text-align: left;
+  flex-basis: auto;
+  padding-bottom: 4px;
+}
+
+.prompt-input-wrapper .structured-params-container .structured-params .ant-form-item .ant-form-item-label > label {
+  color: rgba(0, 0, 0, .85);
+  height: auto;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.prompt-input-wrapper .structured-params-container .structured-params .ant-form-item .ant-form-item-label > label:after {
+  color: #ff4d4f;
+  font-family: SimSun, sans-serif;
+  font-size: 12px;
+  line-height: 1;
+  display: inline-block;
+}
+
+.prompt-input-wrapper .structured-params-container .structured-params .ant-form-item .ant-form-item-label > label:not(:-webkit-any(:lang(ae), :lang(ar), :lang(arc), :lang(bcc), :lang(bqi), :lang(ckb), :lang(dv), :lang(fa), :lang(glk), :lang(he), :lang(ku), :lang(mzn), :lang(nqo), :lang(pnb), :lang(ps), :lang(sd), :lang(ug), :lang(ur), :lang(yi))):after {
+  margin-left: 4px;
+}
+
+.prompt-input-wrapper .structured-params-container .structured-params .ant-form-item .ant-form-item-label > label:not(:-moz-any(:lang(ae), :lang(ar), :lang(arc), :lang(bcc), :lang(bqi), :lang(ckb), :lang(dv), :lang(fa), :lang(glk), :lang(he), :lang(ku), :lang(mzn), :lang(nqo), :lang(pnb), :lang(ps), :lang(sd), :lang(ug), :lang(ur), :lang(yi))):after {
+  margin-left: 4px;
+}
+
+.prompt-input-wrapper .structured-params-container .structured-params .ant-form-item .ant-form-item-label > label:not(:is(:lang(ae), :lang(ar), :lang(arc), :lang(bcc), :lang(bqi), :lang(ckb), :lang(dv), :lang(fa), :lang(glk), :lang(he), :lang(ku), :lang(mzn), :lang(nqo), :lang(pnb), :lang(ps), :lang(sd), :lang(ug), :lang(ur), :lang(yi))):after {
+  margin-left: 4px;
+}
+
+.prompt-input-wrapper .structured-params-container .structured-params .ant-form-item .ant-form-item-label > label:-webkit-any(:lang(ae), :lang(ar), :lang(arc), :lang(bcc), :lang(bqi), :lang(ckb), :lang(dv), :lang(fa), :lang(glk), :lang(he), :lang(ku), :lang(mzn), :lang(nqo), :lang(pnb), :lang(ps), :lang(sd), :lang(ug), :lang(ur), :lang(yi)):after {
+  margin-right: 4px;
+}
+
+.prompt-input-wrapper .structured-params-container .structured-params .ant-form-item .ant-form-item-label > label:-moz-any(:lang(ae), :lang(ar), :lang(arc), :lang(bcc), :lang(bqi), :lang(ckb), :lang(dv), :lang(fa), :lang(glk), :lang(he), :lang(ku), :lang(mzn), :lang(nqo), :lang(pnb), :lang(ps), :lang(sd), :lang(ug), :lang(ur), :lang(yi)):after {
+  margin-right: 4px;
+}
+
+.prompt-input-wrapper .structured-params-container .structured-params .ant-form-item .ant-form-item-label > label:is(:lang(ae), :lang(ar), :lang(arc), :lang(bcc), :lang(bqi), :lang(ckb), :lang(dv), :lang(fa), :lang(glk), :lang(he), :lang(ku), :lang(mzn), :lang(nqo), :lang(pnb), :lang(ps), :lang(sd), :lang(ug), :lang(ur), :lang(yi)):after {
+  margin-right: 4px;
+}
+
+.prompt-input-wrapper .structured-params-container .structured-params .ant-form-item .ant-form-item-control {
+  flex: 1;
+  margin-top: 0;
+}
+
+.prompt-input-wrapper .structured-params-container .structured-params .ant-form-item .ant-form-item-row {
+  flex-direction: column;
+}
+
+.prompt-input-wrapper .structured-params-container .structured-params .ant-form-item .ant-form-item-control-input {
+  min-height: auto;
+}
+
+.prompt-input-wrapper .structured-params-container .structured-params .ant-input, .prompt-input-wrapper .structured-params-container .structured-params .ant-input-number, .prompt-input-wrapper .structured-params-container .structured-params .ant-select {
+  border: 1px solid #e1e5e9;
+  border-radius: 6px;
+  width: 100%;
+}
+
+.prompt-input-wrapper .structured-params-container .structured-params .ant-input:hover, .prompt-input-wrapper .structured-params-container .structured-params .ant-input-number:hover, .prompt-input-wrapper .structured-params-container .structured-params .ant-select:hover {
+  border-color: #40a9ff;
+}
+
+.prompt-input-wrapper .structured-params-container .structured-params textarea.ant-input {
+  padding-bottom: 5px;
+}
+
+.prompt-input-wrapper .structured-params-container .structured-params .ant-input-number .ant-input-number-input {
+  box-shadow: none;
+  border: none;
+}
+
+.prompt-input-wrapper .structured-params-container .structured-params .ant-input-number:hover .ant-input-number-input {
+  box-shadow: none;
+}
+
+.prompt-input-wrapper .structured-params-container .structured-params .ant-select {
+  min-width: 120px;
+}
+
+.prompt-input-wrapper .structured-params-container .structured-params .ant-select .ant-select-selector {
+  box-shadow: none;
+  border: none;
+}
+
+.prompt-input-wrapper .structured-params-container .structured-params .ant-select:hover .ant-select-selector, .prompt-input-wrapper .structured-params-container .structured-params .ant-select.ant-select-focused .ant-select-selector {
+  box-shadow: none;
+}
+
+.prompt-input-wrapper .structured-params-container .structured-params .ant-radio-group {
+  width: 100%;
+}
+
+.prompt-input-wrapper .structured-params-container .structured-params .ant-radio-group .ant-radio-button-wrapper {
+  border: 1px solid #e1e5e9;
+  border-radius: 6px;
+  height: 32px;
+  margin-right: 4px;
+  font-size: 12px;
+  line-height: 30px;
+}
+
+.prompt-input-wrapper .structured-params-container .structured-params .ant-radio-group .ant-radio-button-wrapper.ant-radio-button-wrapper-checked {
+  color: #fff;
+  background-color: #2b83ff;
+  border-color: #2b83ff;
+}
+
+.prompt-stop-square-icon {
+  background: currentColor;
+  border-radius: 2px;
+  flex: 0 0 10px;
+  width: 10px;
+  height: 10px;
+  display: inline-block;
+}
+
+.selector-trigger {
+  cursor: pointer;
+  width: 24px;
+  height: 24px;
+  transition: all .2s;
+}
+
+.selector-trigger .selector-trigger-button {
+  cursor: pointer;
+  width: 24px;
+  height: 24px;
+  color: inherit;
+  background: none;
+  border: none;
+  justify-content: center;
+  align-items: center;
+  padding: 0;
+  display: inline-flex;
+}
+
+.selector-trigger .action-icon {
+  color: rgba(0, 0, 0, .85);
+  font-size: 14px;
+  transition: all .2s;
+}
+
+.selector-trigger .action-icon:hover {
+  color: #2b83ff;
+}
+
+.prompt-input-wrapper-minimal {
+  width: 100%;
+  padding: 0;
+}
+
+.prompt-input-wrapper-minimal .minimal-main-side-console-input {
+  background: #fff;
+  border: 1px solid #e8e8e8;
+  border-radius: 24px;
+  margin-top: 0;
+  padding-bottom: 56px;
+  position: relative;
+  overflow: hidden;
+}
+
+.prompt-input-wrapper-minimal .minimal-main-side-console-input:focus-within {
+  box-shadow: 0 0 0 2px rgba(25, 121, 255, .12);
+}
+
+.prompt-input-wrapper-minimal .minimal-main-side-console-input:before {
+  display: none;
+}
+
+.prompt-input-wrapper-minimal .minimal-main-side-console-input .main-side-console-input-textarea {
+  min-height: 56px;
+  padding: 16px 16px 8px;
+  line-height: 22px;
+}
+
+.prompt-input-wrapper-minimal .minimal-main-side-console-input .structured-params-container {
+  border-radius: inherit;
+  background: none;
+  padding: 16px 16px 72px;
+}
+
+.prompt-input-wrapper-minimal .minimal-main-side-console-input .minimal-toolbar-row {
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  display: flex;
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  right: 12px;
+}
+
+.prompt-input-wrapper-minimal .minimal-main-side-console-input .minimal-toolbar-left {
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  display: flex;
+}
+
+.prompt-input-wrapper-minimal .minimal-main-side-console-input .minimal-action-trigger, .prompt-input-wrapper-minimal .minimal-main-side-console-input .minimal-icon-trigger {
+  cursor: pointer;
+  background: none;
+  border: none;
+  justify-content: center;
+  align-items: center;
+  padding: 0;
+  display: inline-flex;
+}
+
+.prompt-input-wrapper-minimal .minimal-main-side-console-input .minimal-action-trigger {
+  color: #878787;
+  border-radius: 32px;
+  gap: 4px;
+  height: 32px;
+  margin-right: 16px;
+  padding: 4px 0;
+}
+
+.prompt-input-wrapper-minimal .minimal-main-side-console-input .minimal-action-trigger:hover {
+  color: #5f6368;
+}
+
+.prompt-input-wrapper-minimal .minimal-main-side-console-input .minimal-action-trigger:disabled {
+  cursor: not-allowed;
+  opacity: .5;
+}
+
+.prompt-input-wrapper-minimal .minimal-main-side-console-input .minimal-action-icon {
+  object-fit: contain;
+  width: 16px;
+  height: 16px;
+}
+
+.prompt-input-wrapper-minimal .minimal-main-side-console-input .minimal-action-icon-fallback {
+  color: #878787;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+
+.prompt-input-wrapper-minimal .minimal-main-side-console-input .minimal-action-label {
+  color: #878787;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+}
+
+.prompt-input-wrapper-minimal .minimal-main-side-console-input .minimal-action-chevron {
+  object-fit: contain;
+  opacity: 1;
+  width: 6px;
+  height: 10px;
+  margin-left: 0;
+  display: block;
+}
+
+.prompt-input-wrapper-minimal .minimal-main-side-console-input .minimal-action-chevron-fallback {
+  opacity: .5;
+  font-size: 10px;
+}
+
+.prompt-input-wrapper-minimal .minimal-main-side-console-input .history-selector-wrapper, .prompt-input-wrapper-minimal .minimal-main-side-console-input .settings-wrapper, .prompt-input-wrapper-minimal .minimal-main-side-console-input .selector-trigger {
+  justify-content: center;
+  align-items: center;
+  width: auto;
+  height: auto;
+  display: inline-flex;
+}
+
+.prompt-input-wrapper-minimal .minimal-main-side-console-input .minimal-icon-trigger {
+  border-radius: 32px;
+  width: 32px;
+  height: 32px;
+}
+
+.prompt-input-wrapper-minimal .minimal-main-side-console-input .minimal-icon-trigger:hover {
+  background: rgba(0, 0, 0, .04);
+}
+
+.prompt-input-wrapper-minimal .minimal-main-side-console-input .minimal-toolbar-icon {
+  object-fit: contain;
+  width: 16px;
+  height: 16px;
+}
+
+.prompt-input-wrapper-minimal .minimal-main-side-console-input .minimal-toolbar-icon-history {
+  width: 16px;
+  height: 16px;
+}
+
+.prompt-input-wrapper-minimal .minimal-main-side-console-input .minimal-toolbar-icon-fallback {
+  color: #878787;
+}
+
+.prompt-input-wrapper-minimal .minimal-main-side-console-input .form-controller-wrapper {
+  width: auto;
+  height: auto;
+  padding: 0;
+  line-height: normal;
+  position: static;
+}
+
+.prompt-input-wrapper-minimal .minimal-main-side-console-input .minimal-run-trigger {
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  box-shadow: none;
+  color: #fff;
+  background: #1979ff;
+  border: none;
+  border-radius: 50%;
+  justify-content: center;
+  align-items: center;
+  padding: 0;
+  display: inline-flex;
+}
+
+.prompt-input-wrapper-minimal .minimal-main-side-console-input .minimal-run-trigger:hover {
+  color: #fff;
+  background: #0f6ff0;
+}
+
+.prompt-input-wrapper-minimal .minimal-main-side-console-input .minimal-run-trigger:focus-visible {
+  color: #fff;
+  background: #0f6ff0;
+}
+
+.prompt-input-wrapper-minimal .minimal-main-side-console-input .minimal-run-trigger:disabled {
+  color: #bfbfbf;
+  background: #f0f0f0;
+}
+
+.prompt-input-wrapper-minimal .minimal-main-side-console-input .minimal-run-trigger .anticon {
+  font-size: 16px;
+}
+
+.prompt-input-wrapper-minimal .minimal-main-side-console-input .minimal-run-trigger-stop {
+  color: #666;
+  background: #f0f0f0;
+}
+
+.prompt-input-wrapper-minimal .minimal-main-side-console-input .minimal-run-trigger-stop:hover {
+  color: #333;
+  background: #e6e6e6;
+}
+
+.prompt-input-wrapper-minimal .minimal-main-side-console-input .minimal-run-trigger-stop:focus-visible {
+  color: #333;
+  background: #e6e6e6;
+}
+
+.more-apis-dropdown .ant-dropdown-menu {
+  scrollbar-width: thin;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.more-apis-dropdown .ant-dropdown-menu::-webkit-scrollbar {
+  width: 6px;
+}
+
+.more-apis-dropdown .ant-dropdown-menu::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.more-apis-dropdown .ant-dropdown-menu::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.more-apis-dropdown .ant-dropdown-menu::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+.more-apis-dropdown .ant-dropdown-menu .ant-dropdown-menu-item, .more-apis-dropdown .ant-dropdown-menu .ant-dropdown-menu-item-group-title {
+  font-family: Inter, PingFang SC, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Noto Sans, Ubuntu, Cantarell, Helvetica Neue, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+[data-theme="dark"] .prompt-input-wrapper .mode-radio-group-wrapper .mode-radio-group .ant-radio-button-wrapper {
+  color: #f8fafd !important;
+  background-color: rgba(255, 255, 255, .08) !important;
+}
+
+[data-theme="dark"] .prompt-input-wrapper .mode-radio-group-wrapper .mode-radio-group .ant-radio-button-wrapper.ant-radio-button-wrapper-checked {
+  color: #fff !important;
+  background-color: rgba(43, 131, 255, .32) !important;
+  border-color: rgba(0, 0, 0, 0) !important;
+}
+
+[data-theme="dark"] .prompt-input-wrapper .mode-radio-group-wrapper .mode-radio-group .more-apis-button {
+  color: #f8fafd !important;
+  background-color: rgba(255, 255, 255, .08) !important;
+}
+
+[data-theme="dark"] .prompt-input-wrapper .mode-radio-group-wrapper .mode-radio-group .more-apis-button:hover {
+  background-color: rgba(255, 255, 255, .12) !important;
+}
+
+[data-theme="dark"] .prompt-input-wrapper .mode-radio-group-wrapper .mode-radio-group .more-apis-button.selected-from-dropdown {
+  color: #fff !important;
+  background-color: rgba(43, 131, 255, .32) !important;
+}
+
+[data-theme="dark"] .prompt-input-wrapper .mode-radio-group-wrapper .action-icons {
+  background: linear-gradient(to right, rgba(0, 0, 0, 0) 0%, rgba(31, 31, 31, .5) 20%, rgba(31, 31, 31, .8) 40%, rgba(31, 31, 31, .95) 60%, #1f1f1f 70%) !important;
+}
+
+[data-theme="dark"] .prompt-input-wrapper .main-side-console-input {
+  background: #1f1f1f !important;
+  border-color: rgba(255, 255, 255, .12) !important;
+}
+
+[data-theme="dark"] .prompt-input-wrapper .main-side-console-input:focus-within {
+  background: linear-gradient(#1f1f1f, #1f1f1f) padding-box padding-box, linear-gradient(135deg, #4285f4 0%, #06f 25%, #7b02c5 50%, #ea4335 75%, #ff7043 100%) border-box !important;
+  border: 1px solid rgba(0, 0, 0, 0) !important;
+}
+
+[data-theme="dark"] .prompt-input-wrapper .main-side-console-input .main-side-console-input-textarea {
+  color: #f8fafd !important;
+}
+
+[data-theme="dark"] .prompt-input-wrapper .main-side-console-input.loading {
+  background: linear-gradient(#1f1f1f, #1f1f1f) padding-box padding-box, linear-gradient(135deg, #4285f4 0%, #06f 25%, #7b02c5 50%, #ea4335 75%, #ff7043 100%) border-box !important;
+  border: 1px solid rgba(0, 0, 0, 0) !important;
+}
+
+[data-theme="dark"] .prompt-input-wrapper .ant-form-item-control-input-content .ant-input, [data-theme="dark"] .prompt-input-wrapper .ant-form-item-control-input-content textarea.ant-input {
+  color: #f8fafd !important;
+  background: none !important;
+  border-color: rgba(255, 255, 255, .12) !important;
+}
+
+[data-theme="dark"] .prompt-input-wrapper .ant-form-item-control-input-content .ant-btn {
+  color: #f8fafd !important;
+  background-color: rgba(255, 255, 255, .08) !important;
+  border-color: rgba(255, 255, 255, .12) !important;
+}
+
+[data-theme="dark"] .prompt-input-wrapper .ant-form-item-control-input-content .ant-btn.ant-btn-primary {
+  color: #fff !important;
+  background-color: #2b83ff !important;
+  border-color: #2b83ff !important;
+}
+
+[data-theme="dark"] .prompt-input-wrapper .form-controller-wrapper {
+  background-color: rgba(0, 0, 0, 0) !important;
+}
+
+[data-theme="dark"] .prompt-input-wrapper .structured-params-container {
+  background: linear-gradient(#1f1f1f, #1f1f1f) padding-box padding-box, linear-gradient(135deg, #4285f4 0%, #06f 25%, #7b02c5 50%, #ea4335 75%, #ff7043 100%) border-box !important;
+}
+
+[data-theme="dark"] .prompt-input-wrapper .structured-params-container .structured-params .ant-form-item-label > label {
+  color: #f8fafd !important;
+}
+
+[data-theme="dark"] .prompt-input-wrapper .structured-params-container .structured-params .ant-input, [data-theme="dark"] .prompt-input-wrapper .structured-params-container .structured-params .ant-input-number, [data-theme="dark"] .prompt-input-wrapper .structured-params-container .structured-params .ant-select, [data-theme="dark"] .prompt-input-wrapper .structured-params-container .structured-params .ant-radio-group .ant-radio-button-wrapper {
+  color: #f8fafd !important;
+  background-color: rgba(255, 255, 255, .04) !important;
+  border-color: rgba(255, 255, 255, .12) !important;
+}
+
+[data-theme="dark"] .prompt-input-wrapper .structured-params-container .structured-params .ant-radio-group .ant-radio-button-wrapper.ant-radio-button-wrapper-checked {
+  color: #fff !important;
+  background-color: #2b83ff !important;
+  border-color: #2b83ff !important;
+}
+
+[data-theme="dark"] .prompt-input-wrapper.prompt-input-wrapper-minimal .minimal-main-side-console-input .structured-params-container {
+  background: none !important;
+}
+
+[data-theme="dark"] .prompt-input-wrapper.prompt-input-wrapper-minimal .minimal-main-side-console-input .minimal-toolbar-icon-fallback, [data-theme="dark"] .prompt-input-wrapper.prompt-input-wrapper-minimal .minimal-main-side-console-input .minimal-action-icon-fallback {
+  color: rgba(255, 255, 255, .72) !important;
+}
+
+[data-theme="dark"] .prompt-input-wrapper.prompt-input-wrapper-minimal .minimal-main-side-console-input .minimal-run-trigger:disabled {
+  color: rgba(255, 255, 255, .35);
+  background: rgba(255, 255, 255, .08);
+}
+
+[data-theme="dark"] .prompt-input-wrapper.prompt-input-wrapper-minimal .minimal-main-side-console-input .minimal-run-trigger-stop {
+  color: #f8fafd;
+  background: rgba(255, 255, 255, .12);
+}
+
+[data-theme="dark"] .prompt-input-wrapper.prompt-input-wrapper-minimal .minimal-main-side-console-input .minimal-run-trigger-stop:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, .18);
+}
+
+[data-theme="dark"] .prompt-input-wrapper.prompt-input-wrapper-minimal .minimal-main-side-console-input .minimal-run-trigger-stop:focus-visible {
+  color: #fff;
+  background: rgba(255, 255, 255, .18);
+}
+
+[data-theme="dark"] .prompt-input-wrapper.prompt-input-wrapper-minimal .minimal-main-side-console-input .minimal-run-trigger-stop:disabled {
+  color: rgba(255, 255, 255, .35);
+  background: rgba(255, 255, 255, .08);
+}
+
+[data-theme="dark"] .prompt-input .tip-button {
+  background-color: rgba(255, 255, 255, .08);
+}
+
+[data-theme="dark"] .prompt-input .tip-button.active {
+  color: #fff;
+  background-color: #2b83ff;
+}
+
+[data-theme="dark"] .prompt-input .prompt-textarea-wrapper {
+  background-color: rgba(255, 255, 255, .04);
+}
+
+[data-theme="dark"] .prompt-input .prompt-textarea-wrapper:hover, [data-theme="dark"] .prompt-input .prompt-textarea-wrapper.focused {
+  background-color: rgba(255, 255, 255, .08);
+}
+
+[data-theme="dark"] .prompt-input .btn-wrapper .btn-item {
+  color: #fff;
+  background-color: #2b83ff;
+}
+
+[data-theme="dark"] .prompt-input .btn-wrapper .btn-item:hover {
+  background-color: #2b83ff;
+}
+
+[data-theme="dark"] .prompt-input .dropdown-content {
+  background-color: #1f1f1f;
+  border-color: rgba(255, 255, 255, .12);
+}
+
+[data-theme="dark"] .prompt-input .param-label {
+  color: #f8fafd;
+}
+
+[data-theme="dark"] .prompt-input .error-message {
+  color: #ff4d4f;
+}
+
+[data-theme="dark"] .prompt-input .send-button-text {
+  color: #2b83ff;
+}
+
+[data-theme="dark"] .more-apis-dropdown .ant-dropdown-menu::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, .08);
+}
+
+[data-theme="dark"] .more-apis-dropdown .ant-dropdown-menu::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, .2);
+}
+
+[data-theme="dark"] .more-apis-dropdown .ant-dropdown-menu::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, .3);
+}
+

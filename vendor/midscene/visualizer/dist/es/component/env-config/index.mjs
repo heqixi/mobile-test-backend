@@ -1,0 +1,224 @@
+import { jsx, jsxs } from "react/jsx-runtime";
+import { SettingOutlined } from "@ant-design/icons";
+import { Alert, App, Button, Input, Modal, Tooltip } from "antd";
+import { useEffect, useRef, useState } from "react";
+import { parseConfig, useEnvConfig } from "../../store/store.mjs";
+import { notifyError } from "../../utils/index.mjs";
+function asyncGeneratorStep(gen, resolve, reject, _next, _throw, key, arg) {
+    try {
+        var info = gen[key](arg);
+        var value = info.value;
+    } catch (error) {
+        reject(error);
+        return;
+    }
+    if (info.done) resolve(value);
+    else Promise.resolve(value).then(_next, _throw);
+}
+function _async_to_generator(fn) {
+    return function() {
+        var self = this, args = arguments;
+        return new Promise(function(resolve, reject) {
+            var gen = fn.apply(self, args);
+            function _next(value) {
+                asyncGeneratorStep(gen, resolve, reject, _next, _throw, "next", value);
+            }
+            function _throw(err) {
+                asyncGeneratorStep(gen, resolve, reject, _next, _throw, "throw", err);
+            }
+            _next(void 0);
+        });
+    };
+}
+function EnvConfig({ showTooltipWhenEmpty = true, showModelName = true, tooltipPlacement = 'bottom', mode = 'icon', playgroundSDK }) {
+    const { message } = App.useApp();
+    const { config, configString, loadConfig, syncFromStorage } = useEnvConfig();
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [tempConfigString, setTempConfigString] = useState(configString);
+    const [connectivityResult, setConnectivityResult] = useState(null);
+    const [connectivityLoading, setConnectivityLoading] = useState(false);
+    const midsceneModelName = config.MIDSCENE_MODEL_NAME;
+    const canRunConnectivityTest = !!(null == playgroundSDK ? void 0 : playgroundSDK.runConnectivityTest);
+    const componentRef = useRef(null);
+    const closeTimerRef = useRef(null);
+    const clearCloseTimer = ()=>{
+        if (null !== closeTimerRef.current) {
+            window.clearTimeout(closeTimerRef.current);
+            closeTimerRef.current = null;
+        }
+    };
+    const showModal = (e)=>{
+        syncFromStorage();
+        clearCloseTimer();
+        setIsModalOpen(true);
+        e.preventDefault();
+        e.stopPropagation();
+    };
+    const handleOk = ()=>{
+        clearCloseTimer();
+        setIsModalOpen(false);
+        loadConfig(tempConfigString);
+    };
+    const handleSaveAndRun = ()=>_async_to_generator(function*() {
+            const sdk = playgroundSDK;
+            if (!(null == sdk ? void 0 : sdk.runConnectivityTest)) return;
+            try {
+                setConnectivityLoading(true);
+                setConnectivityResult(null);
+                const nextConfig = parseConfig(tempConfigString);
+                const result = yield sdk.runConnectivityTest(nextConfig);
+                setConnectivityResult(result);
+                if (result.passed) {
+                    loadConfig(tempConfigString);
+                    message.success('Model verification passed');
+                    clearCloseTimer();
+                    closeTimerRef.current = window.setTimeout(()=>{
+                        setIsModalOpen(false);
+                        closeTimerRef.current = null;
+                    }, 2000);
+                } else message.warning('Model verification found issues');
+            } catch (error) {
+                const errorMessage = error instanceof Error ? error.message : String(error);
+                notifyError(error, {
+                    title: 'Model verification failed'
+                });
+                setConnectivityResult({
+                    passed: false,
+                    message: errorMessage
+                });
+            } finally{
+                setConnectivityLoading(false);
+            }
+        })();
+    const handleCancel = ()=>{
+        clearCloseTimer();
+        setIsModalOpen(false);
+    };
+    useEffect(()=>{
+        if (isModalOpen) {
+            setTempConfigString(configString);
+            setConnectivityResult(null);
+        }
+    }, [
+        isModalOpen,
+        configString
+    ]);
+    useEffect(()=>()=>{
+            clearCloseTimer();
+        }, []);
+    return /*#__PURE__*/ jsxs("div", {
+        style: {
+            display: 'flex',
+            justifyContent: 'flex-end',
+            gap: '10px',
+            alignItems: 'center',
+            height: '100%',
+            minHeight: '32px'
+        },
+        ref: componentRef,
+        children: [
+            showModelName ? midsceneModelName : null,
+            /*#__PURE__*/ jsx(Tooltip, {
+                title: "Please set up your environment variables before using.",
+                placement: tooltipPlacement,
+                align: {
+                    offset: [
+                        -10,
+                        5
+                    ]
+                },
+                getPopupContainer: ()=>componentRef.current,
+                open: isModalOpen ? false : showTooltipWhenEmpty ? 0 === Object.keys(config).length : void 0,
+                children: 'icon' === mode ? /*#__PURE__*/ jsx(SettingOutlined, {
+                    onClick: showModal
+                }) : /*#__PURE__*/ jsx("span", {
+                    onClick: showModal,
+                    style: {
+                        color: '#006AFF',
+                        cursor: 'pointer'
+                    },
+                    children: "set up"
+                })
+            }),
+            /*#__PURE__*/ jsxs(Modal, {
+                title: "Model Env Config",
+                open: isModalOpen,
+                onOk: handleOk,
+                onCancel: handleCancel,
+                footer: /*#__PURE__*/ jsxs("div", {
+                    style: {
+                        display: 'flex',
+                        justifyContent: 'flex-end',
+                        alignItems: 'center',
+                        gap: 8
+                    },
+                    children: [
+                        canRunConnectivityTest ? /*#__PURE__*/ jsx(Button, {
+                            type: "primary",
+                            ghost: true,
+                            loading: connectivityLoading,
+                            onClick: handleSaveAndRun,
+                            children: "Verify and Save Model"
+                        }, "save-and-run") : null,
+                        /*#__PURE__*/ jsx(Button, {
+                            type: "primary",
+                            onClick: handleOk,
+                            children: "Save"
+                        }, "save")
+                    ]
+                }),
+                style: {
+                    width: '800px',
+                    height: '100%',
+                    marginTop: '10%'
+                },
+                destroyOnClose: true,
+                maskClosable: true,
+                centered: true,
+                children: [
+                    /*#__PURE__*/ jsx(Input.TextArea, {
+                        rows: 7,
+                        placeholder: 'MIDSCENE_MODEL_API_KEY=sk-...\nMIDSCENE_MODEL_NAME=gpt-4o-2024-08-06\n...',
+                        value: tempConfigString,
+                        onChange: (e)=>setTempConfigString(e.target.value),
+                        style: {
+                            whiteSpace: 'nowrap',
+                            wordWrap: 'break-word'
+                        }
+                    }),
+                    /*#__PURE__*/ jsxs("div", {
+                        children: [
+                            /*#__PURE__*/ jsx("p", {
+                                children: "The format is KEY=VALUE and separated by new lines."
+                            }),
+                            /*#__PURE__*/ jsxs("p", {
+                                children: [
+                                    "These data will be saved ",
+                                    /*#__PURE__*/ jsx("strong", {
+                                        children: "locally in your browser"
+                                    }),
+                                    "."
+                                ]
+                            })
+                        ]
+                    }),
+                    connectivityResult ? /*#__PURE__*/ jsx(Alert, {
+                        type: connectivityResult.passed ? 'success' : 'warning',
+                        showIcon: true,
+                        message: connectivityResult.passed ? 'Model verification passed' : 'Model verification failed',
+                        description: connectivityResult.passed ? void 0 : /*#__PURE__*/ jsx("span", {
+                            style: {
+                                whiteSpace: 'pre-wrap'
+                            },
+                            children: connectivityResult.message || 'Connectivity test failed without details.'
+                        }),
+                        style: {
+                            marginTop: 16
+                        }
+                    }) : null
+                ]
+            })
+        ]
+    });
+}
+export { EnvConfig };

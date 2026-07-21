@@ -1,0 +1,13 @@
+.logo img {
+  vertical-align: baseline;
+  height: 30px;
+  vertical-align: -webkit-baseline-middle;
+  line-height: 30px;
+}
+
+.logo-with-star-wrapper {
+  flex-direction: row;
+  justify-content: space-between;
+  display: flex;
+}
+

@@ -1,0 +1,35 @@
+.nav-actions {
+  align-items: center;
+  gap: 8px;
+  display: flex;
+}
+
+.nav-actions .nav-icon {
+  color: rgba(0, 0, 0, .65);
+  cursor: pointer;
+  font-size: 16px;
+  transition: color .3s;
+}
+
+.nav-actions .nav-icon:hover {
+  color: #2b83ff;
+}
+
+.nav-actions a {
+  align-items: center;
+  text-decoration: none;
+  display: flex;
+}
+
+.nav-actions a:hover .nav-icon {
+  color: #2b83ff;
+}
+
+[data-theme="dark"] .nav-actions .nav-icon {
+  color: #f8fafd;
+}
+
+[data-theme="dark"] .nav-actions .nav-icon:hover {
+  color: #2b83ff;
+}
+
