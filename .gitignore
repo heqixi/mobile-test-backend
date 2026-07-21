@@ -41,7 +41,5 @@ coverage/
 apps/agent-service/runs/
 **/runs/visual-evidence/
 
-# Business case library: Midscene HTML dumps（体积大，由业务本地维护）
-business/cowork-csv/data/**/*.reports/
-# 可选：编译 sidecar 可本地生成；若需共享编译结果可取消下一行
-# business/cowork-csv/data/**/*.compiled.json
+# Business case library data (CSV / compiled / reports) is committed under
+# business/cowork-csv/data/ so clones share the default library artifacts.
