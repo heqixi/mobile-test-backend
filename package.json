@@ -10,8 +10,9 @@
   ],
   "scripts": {
     "typecheck": "tsc -b tsconfig.build.json",
-    "sync:midscene": "bash scripts/sync-vendor-midscene.sh",
-    "link:midscene": "bash scripts/link-local-midscene.sh",
+    "sync:midscene": "node scripts/run_python.mjs sync_vendor_midscene.py",
+    "link:midscene": "node scripts/run_python.mjs link_local_midscene.py",
+    "opencode:serve": "node scripts/run_python.mjs opencode_serve.py",
     "executor:serve": "npm run start -w @mtp/executor-service",
     "executor:dev": "npm run dev -w @mtp/executor-service",
     "case:serve": "npm run start -w @mtp/case-service",
