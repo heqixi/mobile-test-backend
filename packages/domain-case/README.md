@@ -19,7 +19,7 @@ Case 域：`CaseDefinition` / `CaseRun`、规则 compile、LLM Compiler API、**
 
 ## 业务示例
 
-`business/cowork-csv` — 读取 `cowork_test_case.csv`，编译产物 sidecar `*.compiled.json`。
+`business/cowork-csv` — **业务自维护** `data/` 下的 CSV、编译 sidecar、Midscene reports；本包只经 HTTP/`CaseDataSourcePort` 交互，不读业务文件系统。
 
 独立 HTTP 服务：`business/cowork-csv`（`npm run cowork-library:serve`，默认 `:4103`）。协议见 `protocol/case-library-http.ts`；主工程 `case-service` 通过 `createRemoteCaseDataSource({ baseUrl })` 连接。
 

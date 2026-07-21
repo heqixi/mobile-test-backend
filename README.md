@@ -51,6 +51,7 @@ npm run agent:serve            # :4100
 ```
 
 数据源格式由**业务 Adapter** 在独立进程处理；`case-service` 经 `createRemoteCaseDataSource({ baseUrl })` 连接，不内嵌 CSV。  
+Cowork 默认数据在 `business/cowork-csv/data/`（CSV、`*.compiled.json`、`*.reports/`）。  
 详见 [`docs/case-llm-instruction-compile.md`](./docs/case-llm-instruction-compile.md)。
 
 设计总览：`vitest-all-platforms-demo/docs/architecture-domain-design.md`。
