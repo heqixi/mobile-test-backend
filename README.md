@@ -27,16 +27,18 @@ npm install
 npm run link:midscene
 
 # 3) 按需启动服务（各开一个终端）
+npm run opencode:serve         # :4096 OpenCode（官方 CLI，非本仓库源码）
 npm run executor:serve         # :4098 + Playground :5800 + Scrcpy :5700
 npm run cowork-library:serve   # :4103 业务用例库（CSV / reports）
 npm run case:serve             # :4102 DataConnector，默认连 :4103
 npm run agent:serve            # :4100 Agent Loop（需 OpenCode :4096）
 ```
 
-推荐顺序：`cowork-library` → `case` → `executor` → `agent`（OpenCode 需先起）。
+推荐顺序：`opencode` → `cowork-library` → `case` → `executor` → `agent`。
 
 | 地址 | 用途 |
 |------|------|
+| `http://127.0.0.1:4096` | OpenCode headless server |
 | `http://127.0.0.1:4098` | Executor HTTP（health / freeform / AEP / screenshot） |
 | `http://127.0.0.1:5800` | Midscene Playground（UniversalPlayground 对话流） |
 | `http://127.0.0.1:5700` | Scrcpy 实时预览 |
@@ -44,13 +46,28 @@ npm run agent:serve            # :4100 Agent Loop（需 OpenCode :4096）
 | `http://127.0.0.1:4102` | Case service |
 | `http://127.0.0.1:4100` | Agent service |
 
+### OpenCode（无源码依赖）
+
+Agent / Case LLM 只通过 HTTP（`OPENCODE_URL`，默认 `:4096`）调用 OpenCode，**不**依赖同级 `opencode/` 源码仓库。
+
+```bash
+# 本机安装一次 CLI（二选一）
+brew install opencode
+# 或：npm i -g opencode-ai
+
+npm run opencode:serve   # 等价于：opencode serve --port 4096 --hostname 127.0.0.1
+```
+
+模型需在 `~/.config/opencode/opencode.jsonc` 配置，并与 `.env` 里 `OPENCODE_PROVIDER_ID` / `OPENCODE_MODEL_ID` 一致。  
+可选：`OPENCODE_BIN` 指定二进制路径；`OPENCODE_PORT` / `OPENCODE_HOSTNAME` 覆盖端口与监听地址。
+
 ### Vendored Midscene
 
 本仓库内置构建产物：`vendor/midscene/{shared,core,android,playground}`（已提交，不依赖 sibling 仓库即可跑）。
 
 | 命令 | 说明 |
 |------|------|
-| `npm run link:midscene` | 将 `node_modules/@midscene/*` 链到 `vendor/midscene/*` |
+| `npm run link:midscene` | 将 `node_modules/@midscene/*` 链到 `vendor/midscene/*`（Python，跨平台） |
 | `npm run sync:midscene` | 从 sibling `../midscene` **重新同步**进 `vendor/`（开发改 Midscene 源码后用），再 `npm install` / `link:midscene` 并提交 `vendor/` |
 
 ### 常用环境变量
