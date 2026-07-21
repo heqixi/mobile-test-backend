@@ -1,6 +1,11 @@
 /** Midscene aiAct 可选参数（与 @midscene/core AiActOptions 对齐的子集） */
 export interface MidsceneAiActOptions {
   abortSignal?: AbortSignal;
+  /**
+   * 限制本次 aiAct 最多执行多少个已规划设备操作；不传则不限制。
+   * Planning / locate 仍可多次；达到上限后不再重规划。
+   */
+  maxActions?: number;
 }
 
 export interface MidsceneLocateResult {

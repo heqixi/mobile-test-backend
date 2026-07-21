@@ -15,6 +15,10 @@ export interface FreeformExecuteRequest {
   /** 自然语言指令，如「点击底部输入框」 */
   prompt: string;
   timeoutMs?: number;
+  /**
+   * 本次 aiAct 最多执行的设备操作数；不传则用 executor 默认 / 不限制。
+   */
+  maxActions?: number;
   metadata?: OpaqueJson;
 }
 

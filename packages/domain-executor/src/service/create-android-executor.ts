@@ -35,6 +35,11 @@ export interface CreateAndroidExecutorOptions {
    * 过小可能截断合法多步任务；过大易在「界面几乎不变」时空转。
    */
   replanningCycleLimit?: number;
+  /**
+   * 默认透传给每次 `aiAct` 的 maxActions（可用 MIDSCENE_AI_ACT_MAX_ACTIONS 覆盖）。
+   * 不设则不限制；单次调用 opt.maxActions 优先于该默认值。
+   */
+  maxActions?: number;
   /** 截图节流间隔 */
   screenshotMinIntervalMs?: number;
 }
@@ -61,6 +66,21 @@ function resolveReplanningCycleLimit(option?: number): number {
     (Number.isFinite(fromEnv) && fromEnv > 0 ? fromEnv : undefined) ??
     5;
   return Math.max(1, Math.floor(raw));
+}
+
+/**
+ * 解析默认 maxActions：优先构造参数，其次 MIDSCENE_AI_ACT_MAX_ACTIONS。
+ * 未配置则返回 undefined（不限制）。
+ */
+function resolveDefaultMaxActions(option?: number): number | undefined {
+  const fromOpt =
+    typeof option === 'number' && Number.isFinite(option) ? option : undefined;
+  const fromEnv = Number(process.env.MIDSCENE_AI_ACT_MAX_ACTIONS);
+  const raw =
+    fromOpt ??
+    (Number.isFinite(fromEnv) && fromEnv >= 0 ? fromEnv : undefined);
+  if (raw === undefined) return undefined;
+  return Math.max(0, Math.floor(raw));
 }
 
 /**
@@ -101,6 +121,7 @@ export async function createAndroidExecutor(
   const replanningCycleLimit = resolveReplanningCycleLimit(
     options.replanningCycleLimit,
   );
+  const defaultMaxActions = resolveDefaultMaxActions(options.maxActions);
 
   const agent = new AndroidAgent(device, {
     aiActionContext:
@@ -110,7 +131,10 @@ export async function createAndroidExecutor(
     replanningCycleLimit,
   });
   console.log(
-    `[domain-executor] Midscene replanningCycleLimit=${replanningCycleLimit}`,
+    `[domain-executor] Midscene replanningCycleLimit=${replanningCycleLimit}` +
+      (defaultMaxActions !== undefined
+        ? ` maxActions=${defaultMaxActions}`
+        : ' maxActions=unlimited'),
   );
 
   /** Playground / freeform 共用同一 Agent；abort 时打断当前 aiAct */
@@ -128,7 +152,16 @@ export async function createAndroidExecutor(
       external?.addEventListener('abort', onExternal, { once: true });
     }
     try {
-      return await rawAiAct(prompt, { ...opt, abortSignal: ac.signal });
+      // 单次 opt.maxActions 优先；否则用 executor 默认（env / 构造参数）
+      const maxActions =
+        typeof opt?.maxActions === 'number' && Number.isFinite(opt.maxActions)
+          ? Math.max(0, Math.floor(opt.maxActions))
+          : defaultMaxActions;
+      return await rawAiAct(prompt, {
+        ...opt,
+        ...(maxActions !== undefined ? { maxActions } : {}),
+        abortSignal: ac.signal,
+      });
     } finally {
       external?.removeEventListener('abort', onExternal);
       if (actAbort === ac) actAbort = null;

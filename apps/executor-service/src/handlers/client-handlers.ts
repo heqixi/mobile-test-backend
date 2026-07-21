@@ -54,6 +54,7 @@ export function createClientHttpHandlers(
       const result = await executor.freeformExecute({
         prompt,
         timeoutMs: req.timeoutMs,
+        maxActions: req.maxActions,
         metadata: req.metadata,
       });
       const report = result.report as
