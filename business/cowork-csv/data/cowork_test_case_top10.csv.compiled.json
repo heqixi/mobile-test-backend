@@ -1,0 +1,890 @@
+{
+  "cowork-001-d6bced5749": {
+    "caseId": "cowork-001-d6bced5749",
+    "instructions": [
+      {
+        "instructionId": "1280a4ba-c42c-4cb4-9b87-1de1ef1653d2",
+        "expectation": "页面显示 WPS 首页布局，包含顶部搜索栏/输入框及附近的功能入口按钮",
+        "preconditions": "WPS App 已启动并处于前台",
+        "actions": [
+          "等待 WPS 首页加载完成"
+        ],
+        "hints": [
+          "首页加载可能受网络或缓存影响，适当增加等待时间",
+          "首页具体布局因版本可能略有差异，以搜索栏和功能入口的存在为准"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-001-d6bced5749",
+          "stepId": "step-1",
+          "stepOrder": 1,
+          "title": "点击输入框旁拍照按钮并完成拍照",
+          "source": "cowork-csv",
+          "stepText": "进入WPS首页",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      },
+      {
+        "instructionId": "f536a25d-8458-4156-8a13-21abe0a63143",
+        "expectation": "页面进入拍照模式或弹出相机取景界面（可能显示快门按钮、返回/取消按钮等拍照控件）",
+        "preconditions": "WPS 首页已加载，底部输入框及右侧拍照按钮可见",
+        "actions": [
+          "点击底部输入框右侧的拍照按钮"
+        ],
+        "hints": [
+          "拍照按钮可能以相机图标形式呈现，也可能带有文字标签",
+          "预期结果可能是相机取景界面或拍照选择菜单（相册/拍照）"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-001-d6bced5749",
+          "stepId": "step-2",
+          "stepOrder": 2,
+          "title": "点击输入框旁拍照按钮并完成拍照",
+          "source": "cowork-csv",
+          "stepText": "点击底部输入框右侧【拍照】按钮",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      },
+      {
+        "instructionId": "5c0e9f2e-08bc-4607-a140-37d80b616506",
+        "expectation": "拍摄完成后相机返回预览模式或显示刚拍摄的缩略图，取景框恢复可拍摄状态",
+        "preconditions": "系统相机已启动并处于拍摄预览界面，相机取景框可见",
+        "actions": [
+          "等待相机预览画面稳定",
+          "在相机预览区域中央执行点击以拍摄照片"
+        ],
+        "hints": [
+          "若相机有快门按钮，优先点击快门按钮而非取景框",
+          "拍摄后可能有短暂处理延迟，需等待界面稳定"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-001-d6bced5749",
+          "stepId": "step-3",
+          "stepOrder": 3,
+          "title": "点击输入框旁拍照按钮并完成拍照",
+          "source": "cowork-csv",
+          "stepText": "系统相机启动后拍摄一张照片",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      },
+      {
+        "instructionId": "ea66aaff-d85c-463d-92e8-e44270633b22",
+        "expectation": "照片预览/确认页关闭，返回原页面，输入框旁或消息输入区域显示已选中的照片缩略图/预览，拍照按钮状态变为已选择照片的编辑或发送状态",
+        "preconditions": "相机已打开并完成拍照，当前界面为照片预览/确认页，显示已拍摄的照片及确认使用按钮（文案可能为「确认」「使用」「完成」「确定」等）",
+        "actions": [
+          "点击照片预览页上的主确认/使用按钮（如「确认」「使用」「完成」「确定」等，文案因设备/语言可能不同）"
+        ],
+        "hints": [
+          "若出现裁剪/编辑界面，本步不处理裁剪，仅核验确认按钮存在且可点击",
+          "确认按钮应为主操作样式（高亮/主色/右侧）的确认类控件"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-001-d6bced5749",
+          "stepId": "step-4",
+          "stepOrder": 4,
+          "title": "点击输入框旁拍照按钮并完成拍照",
+          "source": "cowork-csv",
+          "stepText": "点击【确认/使用照片】",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      },
+      {
+        "instructionId": "5fd73b38-c2ff-4985-88df-f7c38ad4533e",
+        "expectation": "WPS首页输入框内可见已拍摄照片的缩略图或预览占位区域，支持点击预览",
+        "preconditions": "已完成拍照操作，相机已返回，当前页面可能是相机预览页或系统相册选择页",
+        "actions": [
+          "返回或关闭相机/相册页面，回到WPS首页",
+          "观察输入框内是否已挂载已拍摄的照片缩略图"
+        ],
+        "hints": [
+          "缩略图可能显示在输入框内部或输入框右侧/下方",
+          "若输入框旁有已选择图片的标识（如删除/替换按钮），也属于成功挂载的表现"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-001-d6bced5749",
+          "stepId": "step-5",
+          "stepOrder": 5,
+          "title": "点击输入框旁拍照按钮并完成拍照",
+          "source": "cowork-csv",
+          "stepText": "返回首页观察输入框图片挂载状态",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      }
+    ],
+    "reports": [
+      {
+        "ok": true,
+        "issues": [],
+        "draft": {
+          "preconditions": "WPS App 已启动并处于前台",
+          "actions": [
+            "等待 WPS 首页加载完成"
+          ],
+          "expectation": "页面显示 WPS 首页布局，包含顶部搜索栏/输入框及附近的功能入口按钮",
+          "hints": [
+            "首页加载可能受网络或缓存影响，适当增加等待时间",
+            "首页具体布局因版本可能略有差异，以搜索栏和功能入口的存在为准"
+          ],
+          "timeoutMs": 60000
+        }
+      },
+      {
+        "ok": true,
+        "issues": [],
+        "draft": {
+          "preconditions": "WPS 首页已加载，底部输入框及右侧拍照按钮可见",
+          "actions": [
+            "点击底部输入框右侧的拍照按钮"
+          ],
+          "expectation": "页面进入拍照模式或弹出相机取景界面（可能显示快门按钮、返回/取消按钮等拍照控件）",
+          "hints": [
+            "拍照按钮可能以相机图标形式呈现，也可能带有文字标签",
+            "预期结果可能是相机取景界面或拍照选择菜单（相册/拍照）"
+          ],
+          "timeoutMs": 60000
+        }
+      },
+      {
+        "ok": true,
+        "issues": [],
+        "draft": {
+          "preconditions": "系统相机已启动并处于拍摄预览界面，相机取景框可见",
+          "actions": [
+            "等待相机预览画面稳定",
+            "在相机预览区域中央执行点击以拍摄照片"
+          ],
+          "expectation": "拍摄完成后相机返回预览模式或显示刚拍摄的缩略图，取景框恢复可拍摄状态",
+          "hints": [
+            "若相机有快门按钮，优先点击快门按钮而非取景框",
+            "拍摄后可能有短暂处理延迟，需等待界面稳定"
+          ],
+          "timeoutMs": 60000
+        }
+      },
+      {
+        "ok": true,
+        "issues": [],
+        "draft": {
+          "preconditions": "相机已打开并完成拍照，当前界面为照片预览/确认页，显示已拍摄的照片及确认使用按钮（文案可能为「确认」「使用」「完成」「确定」等）",
+          "actions": [
+            "点击照片预览页上的主确认/使用按钮（如「确认」「使用」「完成」「确定」等，文案因设备/语言可能不同）"
+          ],
+          "expectation": "照片预览/确认页关闭，返回原页面，输入框旁或消息输入区域显示已选中的照片缩略图/预览，拍照按钮状态变为已选择照片的编辑或发送状态",
+          "hints": [
+            "若出现裁剪/编辑界面，本步不处理裁剪，仅核验确认按钮存在且可点击",
+            "确认按钮应为主操作样式（高亮/主色/右侧）的确认类控件"
+          ],
+          "timeoutMs": 60000
+        }
+      },
+      {
+        "ok": true,
+        "issues": [],
+        "draft": {
+          "preconditions": "已完成拍照操作，相机已返回，当前页面可能是相机预览页或系统相册选择页",
+          "actions": [
+            "返回或关闭相机/相册页面，回到WPS首页",
+            "观察输入框内是否已挂载已拍摄的照片缩略图"
+          ],
+          "expectation": "WPS首页输入框内可见已拍摄照片的缩略图或预览占位区域，支持点击预览",
+          "hints": [
+            "缩略图可能显示在输入框内部或输入框右侧/下方",
+            "若输入框旁有已选择图片的标识（如删除/替换按钮），也属于成功挂载的表现"
+          ],
+          "timeoutMs": 60000
+        }
+      }
+    ],
+    "compiledAt": "2026-07-20T06:26:30.008Z",
+    "sourceTag": "llm"
+  },
+  "cowork-002-62502c0bd0": {
+    "caseId": "cowork-002-62502c0bd0",
+    "instructions": [
+      {
+        "instructionId": "42087e95-dfcf-4c6c-8020-7b0864aabdf8",
+        "expectation": "页面已切换至WPS首页，可见首页典型布局元素（如文件列表、底部导航栏或功能入口区域）",
+        "actions": [
+          "1.找到wps office 图标，长按图标关闭WPS 的相机权限",
+          "2.打开WPS 导航至WPS首页"
+        ],
+        "hints": [
+          "本步仅确认已进入首页，不执行拍照或相机相关操作",
+          "后续步骤才会触发相机权限拦截"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-002-62502c0bd0",
+          "stepId": "step-1",
+          "stepOrder": 1,
+          "title": "无相机权限点击相机",
+          "source": "cowork-csv",
+          "stepText": "进入WPS首页",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      },
+      {
+        "instructionId": "595aa58f-704d-4d54-9da3-16ef29579885",
+        "expectation": "页面弹出相机权限授权请求弹窗（包含允许/拒绝/仅使用期间允许等选项）",
+        "preconditions": "WPS首页已打开，底部输入框可见，相机权限处于已拒绝状态",
+        "actions": [
+          "点击底部输入框右侧的拍照按钮"
+        ],
+        "hints": [
+          "弹窗文案可能因设备语言不同而差异，应核验弹窗类型为相机权限授权类",
+          "若未弹出权限弹窗则判定为本步失败"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-002-62502c0bd0",
+          "stepId": "step-2",
+          "stepOrder": 2,
+          "title": "无相机权限点击相机",
+          "source": "cowork-csv",
+          "stepText": "点击底部输入框右侧【拍照】按钮",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      }
+    ],
+    "compiledAt": "2026-07-20T06:40:48.153Z",
+    "sourceTag": "panel-edit"
+  },
+  "cowork-004-3f2a8abf56": {
+    "caseId": "cowork-004-3f2a8abf56",
+    "instructions": [
+      {
+        "instructionId": "999e5ecc-4820-421d-8f2d-acfc37db7df2",
+        "expectation": "相机取景界面已打开，页面显示相机取景框及拍照控件",
+        "preconditions": "WPS首页已加载完成，页面可见拍照入口按钮",
+        "actions": [
+          "点击页面上的【拍照】按钮"
+        ],
+        "hints": [
+          "相机启动可能需要数秒，等待取景框出现后再继续"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-004-3f2a8abf56",
+          "stepId": "step-1",
+          "stepOrder": 1,
+          "title": "拍照后取消或重拍",
+          "source": "cowork-csv",
+          "stepText": "点击【拍照】进入相机",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      },
+      {
+        "instructionId": "5047161c-dbe4-4b7d-9802-471ad6c25dfe",
+        "expectation": "预览界面显示最新拍摄的照片（非上一步的照片），重拍按钮和确认按钮均可见",
+        "preconditions": "已进入拍照预览界面，当前显示上一步拍摄的照片缩略图/预览图，界面提供重拍和确认（完成/使用）操作入口",
+        "actions": [
+          "点击重拍按钮",
+          "等待相机取景界面加载完成",
+          "执行拍照操作",
+          "等待照片预览界面加载完成"
+        ],
+        "hints": [
+          "重拍按钮可能显示为返回箭头、文字'重拍'或图标按钮",
+          "确认按钮文案因设备/语言可能不同（如'使用'、'完成'、'确定'等）",
+          "本步为中间步骤，后续还有步骤"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-004-3f2a8abf56",
+          "stepId": "step-2",
+          "stepOrder": 2,
+          "title": "拍照后取消或重拍",
+          "source": "cowork-csv",
+          "stepText": "拍摄后点【重拍】再拍一张并确认",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      },
+      {
+        "instructionId": "d2bf0805-f8ca-405e-8597-f0d6ea0127ce",
+        "expectation": "相机已关闭，页面返回到拍照前的 WPS 首页或上一级界面，未新增挂载或图片内容",
+        "preconditions": "相机已打开并处于拍照预览界面，可看到拍照按钮与取消/关闭按钮",
+        "actions": [
+          "点击相机界面中的取消/关闭按钮",
+          "等待相机关闭并返回上一页"
+        ],
+        "hints": [
+          "取消按钮文案可能为「取消」「取消拍摄」或返回箭头图标，以控件角色（关闭/取消相机）为准",
+          "确认返回后界面未因取消操作产生任何挂载状态变更"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-004-3f2a8abf56",
+          "stepId": "step-3",
+          "stepOrder": 3,
+          "title": "拍照后取消或重拍",
+          "source": "cowork-csv",
+          "stepText": "再次进入相机点【取消】返回",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      }
+    ],
+    "reports": [
+      {
+        "ok": true,
+        "issues": [],
+        "draft": {
+          "preconditions": "WPS首页已加载完成，页面可见拍照入口按钮",
+          "actions": [
+            "点击页面上的【拍照】按钮"
+          ],
+          "expectation": "相机取景界面已打开，页面显示相机取景框及拍照控件",
+          "hints": [
+            "相机启动可能需要数秒，等待取景框出现后再继续"
+          ],
+          "timeoutMs": 60000
+        }
+      },
+      {
+        "ok": true,
+        "issues": [],
+        "draft": {
+          "preconditions": "已进入拍照预览界面，当前显示上一步拍摄的照片缩略图/预览图，界面提供重拍和确认（完成/使用）操作入口",
+          "actions": [
+            "点击重拍按钮",
+            "等待相机取景界面加载完成",
+            "执行拍照操作",
+            "等待照片预览界面加载完成"
+          ],
+          "expectation": "预览界面显示最新拍摄的照片（非上一步的照片），重拍按钮和确认按钮均可见",
+          "hints": [
+            "重拍按钮可能显示为返回箭头、文字'重拍'或图标按钮",
+            "确认按钮文案因设备/语言可能不同（如'使用'、'完成'、'确定'等）",
+            "本步为中间步骤，后续还有步骤"
+          ],
+          "timeoutMs": 60000
+        }
+      },
+      {
+        "ok": true,
+        "issues": [],
+        "draft": {
+          "preconditions": "相机已打开并处于拍照预览界面，可看到拍照按钮与取消/关闭按钮",
+          "actions": [
+            "点击相机界面中的取消/关闭按钮",
+            "等待相机关闭并返回上一页"
+          ],
+          "expectation": "相机已关闭，页面返回到拍照前的 WPS 首页或上一级界面，未新增挂载或图片内容",
+          "hints": [
+            "取消按钮文案可能为「取消」「取消拍摄」或返回箭头图标，以控件角色（关闭/取消相机）为准",
+            "确认返回后界面未因取消操作产生任何挂载状态变更"
+          ],
+          "timeoutMs": 60000
+        }
+      }
+    ],
+    "compiledAt": "2026-07-20T06:58:42.414Z",
+    "sourceTag": "llm"
+  },
+  "cowork-ff2c4a06ac64": {
+    "caseId": "cowork-ff2c4a06ac64",
+    "instructions": [
+      {
+        "instructionId": "b44c3f44-a800-488e-8712-19e11a66ec02",
+        "expectation": "相机权限以关闭",
+        "preconditions": "WPS Office图标显示桌面",
+        "actions": [
+          "长按WPS图标，进入应用详情，关闭相机权限"
+        ],
+        "hints": [],
+        "metadata": {
+          "caseId": "cowork-ff2c4a06ac64"
+        }
+      },
+      {
+        "instructionId": "59333422-0d4d-4c00-a024-442ed902519f",
+        "expectation": "WPS首页已加载完成，底部有输入框，输入框的右侧有拍照图标",
+        "preconditions": "WPS Office图标显示桌面",
+        "actions": [
+          "找到并点击WPS Office应用图标",
+          "等待应用启动完成并展示WPS首页"
+        ],
+        "hints": [
+          "应用启动可能需要数秒，请确保等待动画/加载完成",
+          "若WPS上次退出在首页，则首页内容直接可见"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-ff2c4a06ac64",
+          "stepId": "step-1",
+          "stepOrder": 1,
+          "title": "无相机权限点击相机",
+          "source": "cowork-csv",
+          "stepText": "进入WPS首页",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      },
+      {
+        "instructionId": "73e3681d-c290-4814-bc51-31df0c2cad7d",
+        "expectation": "页面弹出相机权限授权弹窗（系统级或应用级权限请求对话框）",
+        "preconditions": "底部输入框右侧可见拍照按钮",
+        "actions": [
+          "点击底部输入框右侧的拍照按钮"
+        ],
+        "hints": [
+          "权限弹窗文案因设备/系统版本可能不同，应核验弹窗内容与相机权限相关",
+          "若系统未弹出权限弹窗，则用例失败"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-ff2c4a06ac64",
+          "stepId": "step-2",
+          "stepOrder": 2,
+          "title": "无相机权限点击相机",
+          "source": "cowork-csv",
+          "stepText": "点击底部输入框右侧【拍照】按钮",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      }
+    ],
+    "compiledAt": "2026-07-20T08:15:51.717Z",
+    "sourceTag": "panel-edit"
+  },
+  "cowork-88e9db3752ea": {
+    "caseId": "cowork-88e9db3752ea",
+    "instructions": [
+      {
+        "instructionId": "28a29763-41d9-4af8-9c71-ee1d93f380a7",
+        "expectation": "界面切换至相机取景页面，可见相机取景框及拍照相关控件（如快门按钮、返回/取消按钮）",
+        "preconditions": "WPS首页已加载，底部有输入框，输入框右侧有【拍照】按钮",
+        "actions": [
+          "打开WPS 进入首页，确认底部有输入框，输入框右侧有【拍照】按钮",
+          "如果有相机权限弹框，则选择“仅在使用中允许”开启权限",
+          "点击底部输入框的【拍照】按钮进入相机界面"
+        ],
+        "hints": [
+          "相机界面可能请求摄像头权限，若出现权限弹窗需先授权",
+          "不同设备相机界面布局可能不同，以取景框和快门按钮为主要识别特征"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-88e9db3752ea",
+          "stepId": "step-1",
+          "stepOrder": 1,
+          "title": "拍照后取消或重拍",
+          "source": "cowork-csv",
+          "stepText": "点击【拍照】进入相机",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      },
+      {
+        "instructionId": "05c0435f-ad20-482d-bb24-f8e7624d8e6a",
+        "expectation": "拍摄结果预览界面出现，显示刚刚拍摄的新一张照片",
+        "preconditions": "相机已打开",
+        "actions": [
+          "点击拍照按钮，执行一次拍照操作。"
+        ],
+        "metadata": {
+          "caseId": "cowork-88e9db3752ea",
+          "stepId": "step-2",
+          "stepOrder": 2,
+          "title": "拍照后取消或重拍",
+          "source": "cowork-csv",
+          "stepText": "拍摄后点【重拍】再拍一张并确认",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      },
+      {
+        "instructionId": "cb0f0a92-0a93-44d6-ac71-af9bd96615d3",
+        "expectation": "再次出现拍摄取景界面",
+        "preconditions": "已经在拍摄结果预览界面",
+        "actions": [
+          "找到重拍按钮进行重新拍摄"
+        ]
+      },
+      {
+        "instructionId": "c4f0a413-4be3-46db-8879-30c0ba01f5a6",
+        "expectation": "完成拍摄，显示照片预览",
+        "preconditions": "在拍摄取景界面",
+        "actions": [
+          "找到拍摄按钮，拍摄一张照片"
+        ],
+        "hints": []
+      },
+      {
+        "instructionId": "9d1198bf-142c-45b8-bb19-e0036614ca32",
+        "expectation": "进入 WPS AI 首页，并且底部输入框挂载了刚刚拍照的图片",
+        "preconditions": "已经完成拍摄，显示照片预览",
+        "actions": [
+          "选择使用已经完成拍照的图片"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-88e9db3752ea",
+          "stepId": "step-3",
+          "stepOrder": 3,
+          "title": "拍照后取消或重拍",
+          "source": "cowork-csv",
+          "stepText": "再次进入相机点【取消】返回",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      }
+    ],
+    "compiledAt": "2026-07-21T03:31:55.967Z",
+    "sourceTag": "panel-edit"
+  },
+  "cowork-922d0ced510f": {
+    "caseId": "cowork-922d0ced510f",
+    "instructions": [
+      {
+        "instructionId": "18640092-3b67-4253-8bb6-af7894b0af73",
+        "expectation": "界面进入语音录入模式（出现麦克风图标或语音录制控件）",
+        "preconditions": "WPS首页已加载，底部可见文本输入框",
+        "actions": [
+          "长按底部输入框"
+        ],
+        "hints": [
+          "长按时长需足够触发语音录入，而非弹出上下文菜单"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-922d0ced510f",
+          "stepId": "step-1",
+          "stepOrder": 1,
+          "title": "长按输入框进入语音录入",
+          "source": "cowork-csv",
+          "stepText": "在WPS首页长按底部输入框",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      },
+      {
+        "instructionId": "d732fdea-1d91-4959-83ff-29204382ad3c",
+        "expectation": "语音录入界面显示录音时长或波形变化，录音未中断",
+        "preconditions": "输入框已长按，进入语音录入界面，麦克风图标或录音控件可见",
+        "actions": [
+          "在语音录入界面持续说话约2-3秒"
+        ],
+        "hints": [
+          "录音时长在2-3秒范围内即可，不要求精确值",
+          "录音时长仅为本步中间状态，后续步骤可能涉及停止录音或发送"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-922d0ced510f",
+          "stepId": "step-2",
+          "stepOrder": 2,
+          "title": "长按输入框进入语音录入",
+          "source": "cowork-csv",
+          "stepText": "说话2-3秒",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      },
+      {
+        "instructionId": "cf0fc31d-48dd-48c0-a420-9480e9587823",
+        "expectation": "松开后语音录入结束，界面显示语音内容已发送，且页面出现AI生成的回复内容",
+        "preconditions": "已长按输入框，处于语音录入模式，界面显示录音中状态（如波形动画、录音时长等视觉反馈）",
+        "actions": [
+          "在发送区域松手，结束长按操作"
+        ],
+        "hints": [
+          "松手后可能先进行语音转文字，再发送请求，属于正常流程",
+          "确认语音录入UI（如波形、录音按钮状态）恢复正常",
+          "预期结果中的'生成内容'指AI回复文本或卡片"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-922d0ced510f",
+          "stepId": "step-3",
+          "stepOrder": 3,
+          "title": "长按输入框进入语音录入",
+          "source": "cowork-csv",
+          "stepText": "在发送区域松手",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      }
+    ],
+    "reports": [
+      {
+        "ok": true,
+        "issues": [],
+        "draft": {
+          "preconditions": "WPS首页已加载，底部可见文本输入框",
+          "actions": [
+            "长按底部输入框"
+          ],
+          "expectation": "界面进入语音录入模式（出现麦克风图标或语音录制控件）",
+          "hints": [
+            "长按时长需足够触发语音录入，而非弹出上下文菜单"
+          ],
+          "timeoutMs": 60000
+        }
+      },
+      {
+        "ok": true,
+        "issues": [],
+        "draft": {
+          "preconditions": "输入框已长按，进入语音录入界面，麦克风图标或录音控件可见",
+          "actions": [
+            "在语音录入界面持续说话约2-3秒"
+          ],
+          "expectation": "语音录入界面显示录音时长或波形变化，录音未中断",
+          "hints": [
+            "录音时长在2-3秒范围内即可，不要求精确值",
+            "录音时长仅为本步中间状态，后续步骤可能涉及停止录音或发送"
+          ],
+          "timeoutMs": 60000
+        }
+      },
+      {
+        "ok": true,
+        "issues": [],
+        "draft": {
+          "preconditions": "已长按输入框，处于语音录入模式，界面显示录音中状态（如波形动画、录音时长等视觉反馈）",
+          "actions": [
+            "在发送区域松手，结束长按操作"
+          ],
+          "expectation": "松开后语音录入结束，界面显示语音内容已发送，且页面出现AI生成的回复内容",
+          "hints": [
+            "松手后可能先进行语音转文字，再发送请求，属于正常流程",
+            "确认语音录入UI（如波形、录音按钮状态）恢复正常",
+            "预期结果中的'生成内容'指AI回复文本或卡片"
+          ],
+          "timeoutMs": 60000
+        }
+      }
+    ],
+    "compiledAt": "2026-07-20T07:54:04.449Z",
+    "sourceTag": "llm"
+  },
+  "cowork-3beccf87b840": {
+    "caseId": "cowork-3beccf87b840",
+    "instructions": [
+      {
+        "instructionId": "604ff35a-c785-4d1f-807f-bdda8a059fd5",
+        "expectation": "页面显示WPS首页，底部输入框及拍照按钮可见",
+        "preconditions": "WPS Office 应用已启动，处于首页",
+        "actions": [
+          "进入WPS首页"
+        ],
+        "hints": [
+          "首页可能因设备/语言显示不同文案，以控件角色为主"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-3beccf87b840",
+          "stepId": "step-1",
+          "stepOrder": 1,
+          "title": "点击输入框旁拍照按钮并完成拍照",
+          "source": "cowork-csv",
+          "stepText": "进入WPS首页",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      },
+      {
+        "instructionId": "8237b99c-0a47-434a-a4fa-cbe812016916",
+        "expectation": "相机界面已打开（全屏相机取景器或拍照界面可见）",
+        "preconditions": "WPS首页已加载，底部可见输入框及其右侧的拍照按钮",
+        "actions": [
+          "找到底部输入框拍照按钮进行拍照"
+        ],
+        "hints": [
+          "相机打开后可能需要摄像头权限，若弹出权限请求需允许",
+          "拍照界面文案因设备/语言可能不同"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-3beccf87b840",
+          "stepId": "step-2",
+          "stepOrder": 2,
+          "title": "点击输入框旁拍照按钮并完成拍照",
+          "source": "cowork-csv",
+          "stepText": "点击底部输入框右侧【拍照】按钮",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      },
+      {
+        "instructionId": "5df65132-8ec2-41f6-a277-f38a5752834d",
+        "expectation": "拍照完成，相机界面显示拍摄的照片预览或自动返回应用界面",
+        "preconditions": "系统相机已启动并处于可拍摄状态，相机预览界面可见",
+        "actions": [
+          "在相机预览界面触发拍照操作，进入照片预览页面，并且选择这张照片"
+        ],
+        "hints": [
+          "拍照后可能需要等待相机处理图片",
+          "不同设备拍照操作可能不同（单击快门按钮或点击屏幕）"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-3beccf87b840",
+          "stepId": "step-3",
+          "stepOrder": 3,
+          "title": "点击输入框旁拍照按钮并完成拍照",
+          "source": "cowork-csv",
+          "stepText": "系统相机启动后拍摄一张照片",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      },
+      {
+        "instructionId": "6374c29c-5641-49da-a308-1881dcf9093c",
+        "expectation": "输入框内或输入框旁显示已拍照片的缩略图或图片挂载占位控件，可点击预览",
+        "actions": [
+          "观察输入框区域是否显示照片缩略图或图片挂载控件"
+        ],
+        "hints": [
+          "缩略图尺寸应适配输入框高度",
+          "若图片较大可显示为缩小预览而非铺满",
+          "文案因设备/语言可能不同"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-3beccf87b840",
+          "stepId": "step-5",
+          "stepOrder": 5,
+          "title": "点击输入框旁拍照按钮并完成拍照",
+          "source": "cowork-csv",
+          "stepText": "返回首页观察输入框图片挂载状态",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      }
+    ],
+    "compiledAt": "2026-07-21T06:43:10.390Z",
+    "sourceTag": "panel-edit"
+  },
+  "cowork-dc876dd344e4": {
+    "caseId": "cowork-dc876dd344e4",
+    "instructions": [
+      {
+        "instructionId": "92b2c7a0-2e75-4c81-8d82-06ba6a3d06d9",
+        "expectation": "输入框上方可见已挂载图片的预览展示，图片预览区域可辨识",
+        "preconditions": "WPS首页入口已打开，拍照挂载流程已完成，图片已成功挂载并显示在输入框上方区域",
+        "actions": [
+          "确认输入框上方区域显示已挂载的图片预览"
+        ],
+        "hints": [
+          "图片预览可能带有删除/替换等操作控件",
+          "本步为中间步骤，非最终状态"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-dc876dd344e4",
+          "stepId": "step-1",
+          "stepOrder": 1,
+          "title": "已挂载图片时查看输入框上方坑位",
+          "source": "cowork-csv",
+          "stepText": "保持输入框已挂载图片",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      },
+      {
+        "instructionId": "73b0eb17-689a-4742-bf0c-343ede7b5aef",
+        "expectation": "输入框上方的推荐/运营坑位区域不展示（无推荐卡片、无运营位）",
+        "preconditions": "WPS首页已通过拍照入口成功挂载一张图片，输入框处于可用状态",
+        "actions": [
+          "观察输入框上方推荐/运营坑位区域"
+        ],
+        "hints": [
+          "若该区域高度为0或完全不可见则判定通过",
+          "不同设备/语言下坑位文案可能不同，以是否展示为准"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-dc876dd344e4",
+          "stepId": "step-2",
+          "stepOrder": 2,
+          "title": "已挂载图片时查看输入框上方坑位",
+          "source": "cowork-csv",
+          "stepText": "观察输入框上方推荐/运营坑位区域",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      }
+    ],
+    "reports": [
+      {
+        "ok": true,
+        "issues": [],
+        "draft": {
+          "preconditions": "WPS首页入口已打开，拍照挂载流程已完成，图片已成功挂载并显示在输入框上方区域",
+          "actions": [
+            "确认输入框上方区域显示已挂载的图片预览"
+          ],
+          "expectation": "输入框上方可见已挂载图片的预览展示，图片预览区域可辨识",
+          "hints": [
+            "图片预览可能带有删除/替换等操作控件",
+            "本步为中间步骤，非最终状态"
+          ],
+          "timeoutMs": 60000
+        }
+      },
+      {
+        "ok": true,
+        "issues": [],
+        "draft": {
+          "preconditions": "WPS首页已通过拍照入口成功挂载一张图片，输入框处于可用状态",
+          "actions": [
+            "观察输入框上方推荐/运营坑位区域"
+          ],
+          "expectation": "输入框上方的推荐/运营坑位区域不展示（无推荐卡片、无运营位）",
+          "hints": [
+            "若该区域高度为0或完全不可见则判定通过",
+            "不同设备/语言下坑位文案可能不同，以是否展示为准"
+          ],
+          "timeoutMs": 60000
+        }
+      }
+    ],
+    "compiledAt": "2026-07-21T06:34:08.032Z",
+    "sourceTag": "llm"
+  },
+  "cowork-dd620a9525e8": {
+    "caseId": "cowork-dd620a9525e8",
+    "instructions": [
+      {
+        "instructionId": "17cbd016-1647-4ae6-982e-03e574dc287d",
+        "expectation": "输入框上方不再显示已挂载图片，输入框上方的推荐功能位重新出现",
+        "preconditions": "WPS首页已打开，拍照挂载流程已完成，输入框内显示一张或多张图片缩略图",
+        "actions": [
+          "在底部输入框的图片缩略图上找到删除按钮（X 或垃圾桶图标）",
+          "点击该删除按钮"
+        ],
+        "hints": [
+          "删除按钮可能显示为 X 符号或垃圾桶图标，文案因设备可能不同"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-dd620a9525e8",
+          "stepId": "step-1",
+          "stepOrder": 1,
+          "title": "删除已挂载图片",
+          "source": "cowork-csv",
+          "stepText": "在输入框图片缩略图点击【删除/X】",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      }
+    ],
+    "compiledAt": "2026-07-21T06:36:49.839Z",
+    "sourceTag": "panel-edit"
+  }
+}
