@@ -48,6 +48,29 @@ async function main() {
   };
   process.on('SIGINT', shutdown);
   process.on('SIGTERM', shutdown);
+
+  // ADB / scrcpy 底层流偶发断开（ExactReadable ended）不应直接拖垮整站 HTTP
+  process.on('unhandledRejection', (reason) => {
+    const message =
+      reason instanceof Error ? reason.message : String(reason ?? '');
+    console.error('[executor-service] unhandledRejection:', message);
+    if (/ExactReadable ended|device offline|ADB/i.test(message)) {
+      console.error(
+        '[executor-service] ADB/stream error absorbed — HTTP stays up; reconnect device then refresh frontend',
+      );
+      return;
+    }
+  });
+  process.on('uncaughtException', (error) => {
+    console.error('[executor-service] uncaughtException:', error);
+    if (/ExactReadable ended/i.test(error.message)) {
+      console.error(
+        '[executor-service] ADB stream ended absorbed — keep listening on HTTP',
+      );
+      return;
+    }
+    process.exit(1);
+  });
 }
 
 main().catch((error) => {

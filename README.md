@@ -36,7 +36,7 @@ npm run executor:serve
 - `ANDROID_APP_PACKAGE` — 启动包名（默认 `cn.wps.moffice_eng`）
 - `ANDROID_SKIP_LAUNCH=1` — 不自动 launch App
 - `MIDSCENE_PLAYGROUND=0` / `MIDSCENE_SCRCPY=0` — 关闭侧车
-- `MIDSCENE_REPLANNING_CYCLE_LIMIT` — `aiAct` 重规划上限（默认 `3`）
+- `MIDSCENE_REPLANNING_CYCLE_LIMIT` — `aiAct` 重规划上限（默认 `5`）
 
 ## Agent / Case
 

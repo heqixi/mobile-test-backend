@@ -14,6 +14,7 @@ import { sleep } from '@midscene/core/utils';
 import {
   createScreenshotThrottle,
 } from '../adapters/adb-screenshot.js';
+import { installMidscenePlanningLogs } from '../adapters/midscene-planning-logs.js';
 import { startEmbeddedSidecars } from '../adapters/playground-sidecar.js';
 import { MidsceneExecutor } from './midscene-executor.js';
 import type { ExecutorPort } from '../ports/executor-port.js';
@@ -30,7 +31,7 @@ export interface CreateAndroidExecutorOptions {
   /** Midscene aiActionContext */
   aiActionContext?: string;
   /**
-   * Midscene aiAct 重规划上限（默认 3，可用 MIDSCENE_REPLANNING_CYCLE_LIMIT 覆盖）。
+   * Midscene aiAct 重规划上限（默认 5，可用 MIDSCENE_REPLANNING_CYCLE_LIMIT 覆盖）。
    * 过小可能截断合法多步任务；过大易在「界面几乎不变」时空转。
    */
   replanningCycleLimit?: number;
@@ -50,7 +51,7 @@ async function resolveDeviceId(preferred?: string): Promise<string> {
   return id;
 }
 
-/** 默认 3；非法 / 未设时回退默认值 */
+/** 默认 5；非法 / 未设时回退默认值 */
 function resolveReplanningCycleLimit(option?: number): number {
   const fromOpt =
     typeof option === 'number' && Number.isFinite(option) ? option : undefined;
@@ -58,7 +59,7 @@ function resolveReplanningCycleLimit(option?: number): number {
   const raw =
     fromOpt ??
     (Number.isFinite(fromEnv) && fromEnv > 0 ? fromEnv : undefined) ??
-    3;
+    5;
   return Math.max(1, Math.floor(raw));
 }
 
@@ -68,6 +69,8 @@ function resolveReplanningCycleLimit(option?: number): number {
 export async function createAndroidExecutor(
   options: CreateAndroidExecutorOptions = {},
 ): Promise<ExecutorPort> {
+  installMidscenePlanningLogs();
+
   const appPackage =
     options.appPackage?.trim() ||
     process.env.ANDROID_APP_PACKAGE?.trim() ||

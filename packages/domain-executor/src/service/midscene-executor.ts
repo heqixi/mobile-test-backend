@@ -277,6 +277,24 @@ export class MidsceneExecutor implements ExecutorPort {
         report: { prompt, result: result ?? null },
       };
     } catch (error) {
+      const err = error as {
+        message?: string;
+        rawResponse?: unknown;
+        rawChoiceMessage?: unknown;
+        cause?: unknown;
+      };
+      console.error('[midscene-executor] freeformExecute failed:', {
+        prompt,
+        message: err?.message ?? String(error),
+        rawResponse: err?.rawResponse,
+        rawChoiceMessage: err?.rawChoiceMessage,
+        cause:
+          err?.cause instanceof Error
+            ? err.cause.message
+            : err?.cause != null
+              ? String(err.cause)
+              : undefined,
+      });
       return {
         ok: false,
         durationMs: Date.now() - startedAt,
