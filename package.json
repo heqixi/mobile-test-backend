@@ -11,7 +11,6 @@
   "scripts": {
     "typecheck": "tsc -b tsconfig.build.json",
     "sync:midscene": "node scripts/run_python.mjs sync_vendor_midscene.py",
-    "link:midscene": "node scripts/run_python.mjs link_local_midscene.py",
     "opencode:serve": "node scripts/run_python.mjs opencode_serve.py",
     "executor:serve": "npm run start -w @mtp/executor-service",
     "executor:dev": "npm run dev -w @mtp/executor-service",
@@ -21,6 +20,12 @@
     "cowork-library:dev": "npm run dev -w @mtp/business-cowork-csv",
     "agent:serve": "npm run start -w @mtp/agent-service",
     "agent:dev": "npm run dev -w @mtp/agent-service"
+  },
+  "dependencies": {
+    "@midscene/android": "file:vendor/midscene/android",
+    "@midscene/core": "file:vendor/midscene/core",
+    "@midscene/playground": "file:vendor/midscene/playground",
+    "@midscene/shared": "file:vendor/midscene/shared"
   },
   "devDependencies": {
     "tsx": "^4.19.4",

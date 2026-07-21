@@ -27,10 +27,15 @@ def die(msg: str, code: int = 1) -> None:
 def remove_path(path: Path) -> None:
     if not path.exists() and not path.is_symlink():
         return
-    if path.is_symlink() or path.is_file():
+    # Windows junctions are reparse points; Path.is_symlink() is often False,
+    # but shutil.rmtree still refuses them — unlink first.
+    if path.is_symlink() or path.is_file() or path.is_junction():
         path.unlink()
         return
-    shutil.rmtree(path)
+    try:
+        shutil.rmtree(path)
+    except OSError:
+        path.unlink(missing_ok=True)
 
 
 def link_dir(src: Path, dst: Path) -> None:
