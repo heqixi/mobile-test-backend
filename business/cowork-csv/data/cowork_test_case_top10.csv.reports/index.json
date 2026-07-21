@@ -1,0 +1,131 @@
+{
+  "reports": [
+    {
+      "reportId": "lib-2026-07-21T07-21-49-1b1c956c",
+      "createdAt": "2026-07-21T07:18:52.006Z",
+      "finishedAt": "2026-07-21T07:21:49.301Z",
+      "groupName": "Cowork CSV (cowork_test_case_top10.csv)",
+      "groupDescription": "依次运行 3/3 条",
+      "summary": {
+        "total": 3,
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "interrupted": 0,
+        "timedOut": 0
+      },
+      "htmlPath": "/Users/mac/src/agents/mobile-test-backend/business/cowork-csv/data/cowork_test_case_top10.csv.reports/lib-2026-07-21T07-21-49-1b1c956c.html"
+    },
+    {
+      "reportId": "lib-2026-07-21T06-40-41-a798f898",
+      "createdAt": "2026-07-21T06:36:51.556Z",
+      "finishedAt": "2026-07-21T06:40:41.166Z",
+      "groupName": "Cowork CSV (cowork_test_case_top10.csv)",
+      "groupDescription": "依次运行 3/3 条",
+      "summary": {
+        "total": 3,
+        "passed": 1,
+        "failed": 2,
+        "skipped": 0,
+        "interrupted": 0,
+        "timedOut": 0
+      },
+      "htmlPath": "/Users/mac/src/agents/mobile-test-backend/business/cowork-csv/data/cowork_test_case_top10.csv.reports/lib-2026-07-21T06-40-41-a798f898.html"
+    },
+    {
+      "reportId": "lib-2026-07-21T04-16-33-e413fcfb",
+      "createdAt": "2026-07-21T03:59:39.773Z",
+      "finishedAt": "2026-07-21T04:16:33.610Z",
+      "groupName": "Cowork CSV (cowork_test_case_top10.csv)",
+      "groupDescription": "依次运行 2/2 条",
+      "summary": {
+        "total": 2,
+        "passed": 2,
+        "failed": 0,
+        "skipped": 0,
+        "interrupted": 0,
+        "timedOut": 0
+      },
+      "htmlPath": "/Users/mac/src/agents/cowork_test_case_top10.csv.reports/lib-2026-07-21T04-16-33-e413fcfb.html"
+    },
+    {
+      "reportId": "lib-2026-07-20T10-19-03-ac0af26b",
+      "createdAt": "2026-07-20T10:05:55.881Z",
+      "finishedAt": "2026-07-20T10:19:03.906Z",
+      "groupName": "Cowork CSV (cowork_test_case_top10.csv)",
+      "groupDescription": "依次运行 2/2 条",
+      "summary": {
+        "total": 2,
+        "passed": 1,
+        "failed": 1,
+        "skipped": 0,
+        "interrupted": 0,
+        "timedOut": 0
+      },
+      "htmlPath": "/Users/mac/src/agents/cowork_test_case_top10.csv.reports/lib-2026-07-20T10-19-03-ac0af26b.html"
+    },
+    {
+      "reportId": "lib-2026-07-20T10-01-45-27bff320",
+      "createdAt": "2026-07-20T09:49:37.745Z",
+      "finishedAt": "2026-07-20T10:01:45.896Z",
+      "groupName": "Cowork CSV (cowork_test_case_top10.csv)",
+      "groupDescription": "依次运行 1/2 条",
+      "summary": {
+        "total": 1,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0,
+        "interrupted": 1,
+        "timedOut": 0
+      },
+      "htmlPath": "/Users/mac/src/agents/cowork_test_case_top10.csv.reports/lib-2026-07-20T10-01-45-27bff320.html"
+    },
+    {
+      "reportId": "lib-2026-07-20T08-30-04-3a750680",
+      "createdAt": "2026-07-20T08:15:56.467Z",
+      "finishedAt": "2026-07-20T08:30:04.914Z",
+      "groupName": "Cowork CSV (cowork_test_case_top10.csv)",
+      "groupDescription": "依次运行 2/2 条",
+      "summary": {
+        "total": 2,
+        "passed": 0,
+        "failed": 1,
+        "skipped": 0,
+        "interrupted": 1,
+        "timedOut": 0
+      },
+      "htmlPath": "/Users/mac/src/agents/cowork_test_case_top10.csv.reports/lib-2026-07-20T08-30-04-3a750680.html"
+    },
+    {
+      "reportId": "lib-2026-07-20T08-14-24-4fb5e54a",
+      "createdAt": "2026-07-20T08:01:55.179Z",
+      "finishedAt": "2026-07-20T08:14:24.922Z",
+      "groupName": "Cowork CSV (cowork_test_case_top10.csv)",
+      "groupDescription": "依次运行 1/2 条",
+      "summary": {
+        "total": 1,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0,
+        "interrupted": 1,
+        "timedOut": 0
+      },
+      "htmlPath": "/Users/mac/src/agents/cowork_test_case_top10.csv.reports/lib-2026-07-20T08-14-24-4fb5e54a.html"
+    },
+    {
+      "reportId": "lib-2026-07-20T06-15-25-23a9c109",
+      "createdAt": "2026-07-20T06:15:25.014Z",
+      "finishedAt": "2026-07-20T06:15:25.014Z",
+      "groupName": "smoke midscene compat",
+      "summary": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0,
+        "interrupted": 0,
+        "timedOut": 0
+      },
+      "htmlPath": "/Users/mac/src/agents/cowork_test_case_top10.csv.reports/lib-2026-07-20T06-15-25-23a9c109.html"
+    }
+  ]
+}

@@ -1,0 +1,82 @@
+{
+  "reportId": "lib-2026-07-20T06-15-25-23a9c109",
+  "createdAt": "2026-07-20T06:15:25.014Z",
+  "finishedAt": "2026-07-20T06:15:25.014Z",
+  "groupName": "smoke midscene compat",
+  "sdkVersion": "1.10.4",
+  "htmlPath": "/Users/mac/src/agents/cowork_test_case_top10.csv.reports/lib-2026-07-20T06-15-25-23a9c109.html",
+  "dumpPath": "/Users/mac/src/agents/cowork_test_case_top10.csv.reports/lib-2026-07-20T06-15-25-23a9c109.json",
+  "cases": [
+    {
+      "caseId": "cowork-001-demo",
+      "title": "demo case",
+      "path": [
+        "功能测试",
+        "WPS"
+      ],
+      "priority": "P0",
+      "sourceFields": {
+        "用例标题": "demo case",
+        "测试结果": ""
+      },
+      "status": "passed",
+      "durationMs": 1200,
+      "reason": "ok",
+      "instructionResults": [
+        {
+          "instructionId": "i1",
+          "label": "step1",
+          "satisfied": true,
+          "status": "completed",
+          "durationMs": 500
+        }
+      ],
+      "dump": {
+        "sdkVersion": "1.10.4",
+        "groupName": "demo case",
+        "groupDescription": "目录：功能测试 / WPS · 等级：P0 · 结果：ok",
+        "modelBriefs": [],
+        "executions": [
+          {
+            "id": "cowork-001-demo",
+            "logTime": 1784528125013,
+            "name": "demo case",
+            "description": "目录：功能测试 / WPS\n等级：P0\n结果：ok",
+            "tasks": [
+              {
+                "taskId": "i1",
+                "type": "Log",
+                "subType": "Instruction",
+                "status": "finished",
+                "param": {
+                  "content": "step1"
+                },
+                "thought": "completed",
+                "timing": {
+                  "start": 1784528123813,
+                  "end": 1784528124313,
+                  "cost": 500
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "attributes": {
+        "playwright_test_id": "cowork-001-demo",
+        "playwright_test_title": "demo case",
+        "playwright_test_description": "目录：功能测试 / WPS · 等级：P0 · 结果：ok",
+        "playwright_test_status": "passed",
+        "playwright_test_duration": 1200
+      }
+    }
+  ],
+  "summary": {
+    "total": 1,
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0,
+    "interrupted": 0,
+    "timedOut": 0
+  }
+}
