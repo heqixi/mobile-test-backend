@@ -43,3 +43,7 @@ apps/agent-service/runs/
 
 # Business case library data (CSV / compiled / reports) is committed under
 # business/cowork-csv/data/ so clones share the default library artifacts.
+
+# Goal Space local sampling / published media (keep README only)
+business/goal-space/data/**
+!business/goal-space/data/README.md
