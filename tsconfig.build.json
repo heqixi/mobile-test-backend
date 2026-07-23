@@ -5,6 +5,7 @@
     { "path": "./packages/domain-agent" },
     { "path": "./packages/domain-case" },
     { "path": "./packages/domain-executor" },
+    { "path": "./packages/domain-goal-space" },
     { "path": "./apps/agent-service" },
     { "path": "./apps/executor-service" },
     { "path": "./apps/case-service" }

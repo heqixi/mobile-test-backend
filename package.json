@@ -18,6 +18,8 @@
     "case:dev": "npm run dev -w @mtp/case-service",
     "cowork-library:serve": "npm run serve -w @mtp/business-cowork-csv",
     "cowork-library:dev": "npm run dev -w @mtp/business-cowork-csv",
+    "goal-space:serve": "npm run serve -w @mtp/business-goal-space",
+    "goal-space:dev": "npm run dev -w @mtp/business-goal-space",
     "agent:serve": "npm run start -w @mtp/agent-service",
     "agent:dev": "npm run dev -w @mtp/agent-service"
   },
