@@ -176,6 +176,7 @@ export class ExecutorHttpClient {
   async freeformExecute(
     prompt: string,
     timeoutMs?: number,
+    opts?: { maxActions?: number },
   ): Promise<ExecutorFreeformResult> {
     const trimmed = prompt.trim();
     if (!trimmed) {
@@ -184,7 +185,7 @@ export class ExecutorHttpClient {
     const effectiveTimeout =
       typeof timeoutMs === 'number' && Number.isFinite(timeoutMs) && timeoutMs > 0
         ? Math.floor(timeoutMs)
-        : 15_000;
+        : 45_000;
     try {
       const res = await this.request<{
         ok?: boolean;
@@ -199,6 +200,9 @@ export class ExecutorHttpClient {
         {
           prompt: trimmed,
           timeoutMs: effectiveTimeout,
+          ...(opts?.maxActions !== undefined
+            ? { maxActions: opts.maxActions }
+            : {}),
         },
         // HTTP 层略宽于 Midscene abort，避免竞态先断连接
         { timeoutMs: effectiveTimeout + 2_000 },
@@ -216,6 +220,24 @@ export class ExecutorHttpClient {
         prompt: trimmed,
         error: error instanceof Error ? error.message : String(error),
       };
+    }
+  }
+
+  /**
+   * 预置下一次 aiAct（含 Playground /execute）的 maxActions。
+   * `null` = 本次不限制（覆盖 executor 默认）。
+   */
+  async armNextAiActMaxActions(
+    maxActions: number | null,
+  ): Promise<{ ok: boolean }> {
+    try {
+      return await this.request<{ ok: boolean }>(
+        'POST',
+        '/aep/v0.2/arm-ai-act',
+        { maxActions },
+      );
+    } catch {
+      return { ok: false };
     }
   }
 

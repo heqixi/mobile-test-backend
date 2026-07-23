@@ -27,6 +27,8 @@ export interface EpisodeRecord {
   lastVisualEvidence?: VisualEvidence;
   /** Plan 选出的待执行 command */
   pendingCommand?: string;
+  /** Plan 分类的 Midscene actionKind（决定是否 maxActions=1） */
+  pendingActionKind?: import('../models/midscene-action-kind.js').MidsceneActionKind;
   /** 本次 act 的意图 */
   planIntent?: 'act' | 'recovery';
 }

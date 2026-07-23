@@ -22,17 +22,19 @@ type Pending = {
   resolve: (value: PlaygroundRunResult | null) => void;
   claimTimer: ReturnType<typeof setTimeout>;
   resultTimer: ReturnType<typeof setTimeout> | null;
+  /** 本轮 Midscene 结果超时（ack 后起算） */
+  resultTimeoutMs: number;
   startedAt: number;
 };
 
 export function createPlaygroundRunHub(options?: {
   /** 前端未 ack 的回退等待；默认 8s（等 SSE → UniversalPlayground） */
   claimTimeoutMs?: number;
-  /** 已 ack 后等 Midscene 结果的上限；默认 15s */
+  /** 已 ack 后等 Midscene 结果的上限；默认 45s（单次 wait 可覆盖） */
   resultTimeoutMs?: number;
 }) {
   const claimTimeoutMs = options?.claimTimeoutMs ?? 8_000;
-  const resultTimeoutMs = options?.resultTimeoutMs ?? 15_000;
+  const defaultResultTimeoutMs = options?.resultTimeoutMs ?? 45_000;
   const pending = new Map<string, Pending>();
 
   function clear(entry: Pending): void {
@@ -45,7 +47,7 @@ export function createPlaygroundRunHub(options?: {
       ok: false,
       prompt: entry.prompt,
       durationMs: Date.now() - entry.startedAt,
-      error: `timeout after ${resultTimeoutMs}ms`,
+      error: `timeout after ${entry.resultTimeoutMs}ms`,
     });
   }
 
@@ -54,14 +56,25 @@ export function createPlaygroundRunHub(options?: {
      * Loop 侧：等待前端 Playground 执行结果。
      * 返回 null 表示无人认领，调用方应回退 freeform。
      */
-    wait(requestId: string, prompt: string): Promise<PlaygroundRunResult | null> {
+    wait(
+      requestId: string,
+      prompt: string,
+      opts?: { resultTimeoutMs?: number },
+    ): Promise<PlaygroundRunResult | null> {
       return new Promise((resolve) => {
         const startedAt = Date.now();
+        const resultTimeoutMs =
+          typeof opts?.resultTimeoutMs === 'number' &&
+          Number.isFinite(opts.resultTimeoutMs) &&
+          opts.resultTimeoutMs > 0
+            ? Math.floor(opts.resultTimeoutMs)
+            : defaultResultTimeoutMs;
         const entry: Pending = {
           prompt,
           claimed: false,
           startedAt,
           resultTimer: null,
+          resultTimeoutMs,
           resolve: (value) => {
             clear(entry);
             pending.delete(requestId);
@@ -89,7 +102,7 @@ export function createPlaygroundRunHub(options?: {
       entry.resultTimer = setTimeout(() => {
         const cur = pending.get(requestId);
         if (cur) failTimeout(cur, requestId);
-      }, resultTimeoutMs);
+      }, entry.resultTimeoutMs);
       return true;
     },
 

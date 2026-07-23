@@ -40,6 +40,11 @@ import {
   summarizeMidsceneResult,
 } from './act-nl.js';
 import {
+  actTimeoutMsForKind,
+  maxActionsForKind,
+  type MidsceneActionKind,
+} from '../models/midscene-action-kind.js';
+import {
   appendTurn,
   baseEvent,
   expectationPreview,
@@ -101,6 +106,10 @@ export interface CreateAgentLoopOptions extends OpenCodeHttpOptions {
   runActNlViaPlayground?: (input: {
     command: string;
     requestId: string;
+    actionKind?: MidsceneActionKind;
+    maxActions?: number;
+    /** Playground 等结果超时；缺省用 hub 默认 */
+    timeoutMs?: number;
   }) => Promise<{
     ok: boolean;
     prompt: string;
@@ -109,9 +118,11 @@ export interface CreateAgentLoopOptions extends OpenCodeHttpOptions {
     error?: string;
   } | null>;
   cancelPlaygroundRun?: (requestId: string) => void;
-  /** Goal Space 检索（ContextPack 注入 plan） */
-  goalSpace?: import('@mtp/domain-goal-space').GoalSpaceRetrievePort;
-  goalSpaceRef?: { spaceId: string; version?: string };
+  /**
+   * Business 组装层注入的 phase 上下文（不透明 markdown）。
+   * 域内不依赖 Goal Space；由 agent-service 等绑定 retrieve。
+   */
+  enrichPhaseContext?: import('./phase-llm.js').EnrichPhaseContext;
 }
 
 function envLimit(
@@ -165,11 +176,11 @@ export function createAgentLoop(
   const openCodeModel = resolveOpenCodeModel(options.model);
   const runActNlViaPlayground = options.runActNlViaPlayground;
   const cancelPlaygroundRun = options.cancelPlaygroundRun;
-  /** Midscene aiAct / Playground 执行超时（默认 15s） */
+  /** Midscene aiAct / Playground 执行超时基线（点击等；Input 另见 AGENT_ACT_INPUT_TIMEOUT_MS） */
   const actTimeoutMs = envLimit(
     undefined,
     'AGENT_ACT_TIMEOUT_MS',
-    15_000,
+    45_000,
   );
   /** act 结果返回后、下一轮 plan 截图前的稳定等待（默认 1s） */
   const postActScreenshotDelayMs = envLimit(
@@ -185,8 +196,7 @@ export function createAgentLoop(
     executor,
     openCodeModel,
     onEvent,
-    goalSpace: options.goalSpace,
-    goalSpaceRef: options.goalSpaceRef,
+    enrichPhaseContext: options.enrichPhaseContext,
   };
 
   function log(
@@ -274,6 +284,7 @@ export function createAgentLoop(
     rec.abortRequested = true;
     rec.episode.status = 'failed';
     rec.pendingCommand = undefined;
+    rec.pendingActionKind = undefined;
     touch(rec);
     if (stopDevice) {
       await stopMidscene(rec);
@@ -298,6 +309,7 @@ export function createAgentLoop(
     rec.abortRequested = true;
     rec.episode.status = 'aborted';
     rec.pendingCommand = undefined;
+    rec.pendingActionKind = undefined;
     const playgroundId = rec.activePlaygroundRequestId;
     if (playgroundId) {
       try {
@@ -527,6 +539,10 @@ export function createAgentLoop(
       type: 'turn.plan',
       strategy: turn.strategy,
       command: turn.command,
+      actionKind: turn.actionKind,
+      maxActions: turn.actionKind
+        ? maxActionsForKind(turn.actionKind)
+        : undefined,
       evidence: turn.evidence,
     });
 
@@ -572,11 +588,16 @@ export function createAgentLoop(
     rec.episode.round = tr.planRound;
     rec.episode.consecutiveRecoveryFailures = tr.consecutiveRecovery;
     rec.pendingCommand = tr.pendingCommand;
+    rec.pendingActionKind = turn.actionKind;
     rec.planIntent = tr.planIntent;
     rec.episode.status = 'act';
     log('info', 'phase plan → act', {
       episodeId: rec.episode.episodeId,
       intent: tr.planIntent,
+      actionKind: turn.actionKind,
+      maxActions: turn.actionKind
+        ? maxActionsForKind(turn.actionKind)
+        : undefined,
       command: tr.pendingCommand.slice(0, 80),
     });
     touch(rec);
@@ -591,11 +612,24 @@ export function createAgentLoop(
       rec.pendingCommand?.trim() ||
       actNlCommand(rec.episode.lastPlan?.toolCalls ?? []) ||
       '';
+    const actionKind =
+      rec.pendingActionKind ??
+      rec.episode.lastPlan?.actionKind ??
+      undefined;
+    const maxActions = actionKind
+      ? maxActionsForKind(actionKind)
+      : undefined;
+    const timeoutMs = actionKind
+      ? actTimeoutMsForKind(actionKind)
+      : actTimeoutMs;
 
     log('info', 'phase act start', {
       episodeId: rec.episode.episodeId,
       intent: rec.planIntent,
       command,
+      actionKind,
+      maxActions,
+      timeoutMs,
       viaPlayground: Boolean(runActNlViaPlayground),
     });
 
@@ -618,24 +652,37 @@ export function createAgentLoop(
         type: 'turn.playground_run',
         requestId,
         command,
+        actionKind,
+        maxActions,
       });
+
+      // Playground /execute 与 freeform 共用同一 Agent：预置下一次 aiAct 的 maxActions
+      await executor.armNextAiActMaxActions(maxActions ?? null).catch(() => undefined);
 
       rec.activePlaygroundRequestId = requestId;
       let freeform = runActNlViaPlayground
-        ? await runActNlViaPlayground({ command, requestId })
+        ? await runActNlViaPlayground({
+            command,
+            requestId,
+            actionKind,
+            maxActions,
+            timeoutMs,
+          })
         : null;
       rec.activePlaygroundRequestId = undefined;
       throwIfAborted(rec);
 
       if (!freeform) {
-        freeform = await executor.freeformExecute(command, actTimeoutMs);
+        freeform = await executor.freeformExecute(command, timeoutMs, {
+          maxActions,
+        });
         throwIfAborted(rec);
       } else if (
         freeform.ok === false &&
         /timeout/i.test(freeform.error ?? '')
       ) {
         // Playground 已超时：打断仍在跑的 Midscene，避免后台继续点
-        await executor.abort(`act timeout after ${actTimeoutMs}ms`).catch(
+        await executor.abort(`act timeout after ${timeoutMs}ms`).catch(
           () => undefined,
         );
       }
@@ -650,6 +697,8 @@ export function createAgentLoop(
           ok,
           name: ACT_NL_TOOL,
           prompt,
+          actionKind,
+          maxActions,
           durationMs,
           result: resultPreview ?? null,
           error,
@@ -686,6 +735,7 @@ export function createAgentLoop(
     });
 
     rec.pendingCommand = undefined;
+    rec.pendingActionKind = undefined;
     rec.planIntent = undefined;
 
     if (tr.next === 'failed') {
@@ -844,6 +894,8 @@ export function createAgentLoop(
           const cmd = actNlCommand(toolCalls as never);
           if (cmd) {
             rec.pendingCommand = cmd;
+            rec.pendingActionKind =
+              rec.episode.lastPlan?.actionKind ?? rec.pendingActionKind;
             rec.planIntent = rec.planIntent ?? 'act';
           }
         }
