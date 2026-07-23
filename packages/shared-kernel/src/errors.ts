@@ -1,7 +1,7 @@
 /**
  * @module @mtp/shared-kernel/errors
  *
- * 三域 HTTP / 端口层共用错误码与错误体。
+ * 各域 HTTP / 端口层共用错误码与错误体。
  *
  * 注意：「是否达成测试期望」**不在此列**——
  * 那是 LLM JudgeTurn / InstructionResult.satisfied（§7.6）。
@@ -42,8 +42,26 @@ export type ExecutorErrorCode =
   | 'TOOL_NOT_FOUND'
   | 'BIND_FAILED';
 
+/** Goal Space 域错误码（交互式目标初采样） */
+export type GoalSpaceErrorCode =
+  | 'SPACE_NOT_FOUND'
+  | 'VERSION_NOT_FOUND'
+  | 'SESSION_NOT_FOUND'
+  | 'SESSION_NOT_OPEN'
+  | 'KEYFRAME_NOT_FOUND'
+  | 'TRANSITION_NOT_FOUND'
+  | 'NOTE_NOT_FOUND'
+  | 'INVALID'
+  | 'SUBMIT_VALIDATION_FAILED'
+  | 'RETRIEVE_FAILED'
+  | 'MEDIA_NOT_FOUND';
+
 /** 所有领域错误码联合 */
-export type DomainErrorCode = AgentErrorCode | CaseErrorCode | ExecutorErrorCode;
+export type DomainErrorCode =
+  | AgentErrorCode
+  | CaseErrorCode
+  | ExecutorErrorCode
+  | GoalSpaceErrorCode;
 
 /**
  * API 统一错误响应体。
