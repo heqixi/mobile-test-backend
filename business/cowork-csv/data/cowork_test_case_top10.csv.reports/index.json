@@ -1,6 +1,38 @@
 {
   "reports": [
     {
+      "reportId": "lib-2026-07-22T02-06-21-22d8f94e",
+      "createdAt": "2026-07-22T02:00:55.505Z",
+      "finishedAt": "2026-07-22T02:06:21.371Z",
+      "groupName": "Cowork CSV (cowork_test_case_top10.csv)",
+      "groupDescription": "依次运行 1/1 条",
+      "summary": {
+        "total": 1,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0,
+        "interrupted": 1,
+        "timedOut": 0
+      },
+      "htmlPath": "/Users/mac/src/agents/mobile-test-backend/business/cowork-csv/data/cowork_test_case_top10.csv.reports/lib-2026-07-22T02-06-21-22d8f94e.html"
+    },
+    {
+      "reportId": "lib-2026-07-21T10-38-10-64dd9e6a",
+      "createdAt": "2026-07-21T10:26:25.582Z",
+      "finishedAt": "2026-07-21T10:38:10.769Z",
+      "groupName": "Cowork CSV (cowork_test_case_top10.csv)",
+      "groupDescription": "依次运行 2/10 条",
+      "summary": {
+        "total": 2,
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0,
+        "interrupted": 1,
+        "timedOut": 0
+      },
+      "htmlPath": "/Users/mac/src/agents/mobile-test-backend/business/cowork-csv/data/cowork_test_case_top10.csv.reports/lib-2026-07-21T10-38-10-64dd9e6a.html"
+    },
+    {
       "reportId": "lib-2026-07-21T07-21-49-1b1c956c",
       "createdAt": "2026-07-21T07:18:52.006Z",
       "finishedAt": "2026-07-21T07:21:49.301Z",
