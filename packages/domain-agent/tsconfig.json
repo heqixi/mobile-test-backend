@@ -7,8 +7,7 @@
     "noEmit": false
   },
   "references": [
-    { "path": "../shared-kernel" },
-    { "path": "../domain-goal-space" }
+    { "path": "../shared-kernel" }
   ],
   "include": ["src"]
 }

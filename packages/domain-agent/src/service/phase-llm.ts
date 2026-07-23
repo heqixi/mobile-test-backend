@@ -3,9 +3,12 @@
  *
  * Plan LLM：附带截图 + 按需 Expectation Golden 参考图。
  * 不向模型注入 preconditions 文本或 PreCondition Golden。
+ *
+ * 可选业务上下文经 enrichPhaseContext 注入（域内不感知 Goal Space）。
+ * Business 必须按需 retrieve 裁剪后的 markdown，禁止整图/全量关键帧硬塞。
  */
 
-import type { GoalSpaceRetrievePort } from '@mtp/domain-goal-space';
+import type { Instruction } from '../models/instruction.js';
 import type { ExecutorHttpClient } from '../adapters/executor-http.js';
 import {
   extractAssistantText,
@@ -26,17 +29,22 @@ import { baseEvent, type EpisodeRecord } from './episode-record.js';
 import {
   buildEpisodeSystemPrompt,
   buildPhaseUserPrompt,
-  expectationText,
 } from './system-prompt.js';
+
+/** Business 组装层提供：返回不透明 markdown，失败则 undefined */
+export type EnrichPhaseContext = (input: {
+  phase: LlmPhase;
+  instruction: Instruction;
+  pendingCommand?: string;
+  screenshotBase64?: string;
+}) => Promise<string | undefined>;
 
 export interface PhaseLlmDeps {
   client: OpenCodeHttpClient;
   executor: ExecutorHttpClient;
   openCodeModel: { providerID: string; modelID: string };
   onEvent?: AgentLoopEventListener;
-  /** 可选：Goal Space 检索门面 */
-  goalSpace?: GoalSpaceRetrievePort;
-  goalSpaceRef?: { spaceId: string; version?: string };
+  enrichPhaseContext?: EnrichPhaseContext;
 }
 
 export async function askPhaseLlm(
@@ -44,7 +52,7 @@ export async function askPhaseLlm(
   rec: EpisodeRecord,
   phase: LlmPhase = 'plan',
 ): Promise<string> {
-  const { client, executor, openCodeModel, onEvent, goalSpace, goalSpaceRef } =
+  const { client, executor, openCodeModel, onEvent, enrichPhaseContext } =
     deps;
 
   const shot = await executor.captureScreenshot();
@@ -86,35 +94,20 @@ export async function askPhaseLlm(
 
   const hasExpectationRef = Boolean(expectationDataUrl);
 
-  let goalSpaceMarkdown: string | undefined;
-  if (goalSpace && process.env.AGENT_GOAL_SPACE !== '0') {
-    const spaceId =
-      goalSpaceRef?.spaceId ??
-      process.env.GOAL_SPACE_ID?.trim() ??
-      'cowork-android';
-    const version =
-      goalSpaceRef?.version ?? process.env.GOAL_SPACE_VERSION?.trim();
-    const intent = [
-      expectationText(rec.episode.instruction),
-      ...(rec.episode.instruction.actions ?? []),
-      rec.pendingCommand,
-    ]
-      .filter(Boolean)
-      .join('\n');
+  let extraContextMarkdown: string | undefined;
+  if (enrichPhaseContext) {
     try {
-      const pack = await goalSpace.retrieve({
-        spaceId,
-        ref: version ? { spaceId, version } : undefined,
-        intentText: intent || '当前界面下一步操作',
-        currentScreenshot: shot.ok
-          ? { base64: shot.base64 ?? imageDataUrl ?? '' }
+      extraContextMarkdown = await enrichPhaseContext({
+        phase,
+        instruction: rec.episode.instruction,
+        pendingCommand: rec.pendingCommand,
+        screenshotBase64: shot.ok
+          ? (shot.base64 ?? imageDataUrl ?? undefined)
           : undefined,
-        strategy: 'auto',
       });
-      goalSpaceMarkdown = pack.textMarkdown;
     } catch (err) {
       console.warn(
-        '[phase-llm] goal-space retrieve skipped:',
+        '[phase-llm] enrichPhaseContext skipped:',
         err instanceof Error ? err.message : err,
       );
     }
@@ -124,7 +117,7 @@ export async function askPhaseLlm(
     phase,
     rec.episode.instruction,
     lastToolFromEpisode(rec.episode),
-    { hasExpectationRef, goalSpaceMarkdown },
+    { hasExpectationRef, extraContextMarkdown },
   );
 
   const sseBits = [

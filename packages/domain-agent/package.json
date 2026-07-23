@@ -7,7 +7,6 @@
   "types": "./src/index.ts",
   "exports": { ".": "./src/index.ts" },
   "dependencies": {
-    "@mtp/domain-goal-space": "0.0.0",
     "@mtp/shared-kernel": "0.0.0"
   }
 }
