@@ -3,15 +3,14 @@
     "caseId": "cowork-cec18c74c0b7",
     "instructions": [
       {
-        "instructionId": "4913f2b5-20c8-4d10-a811-5b8ce210a9ee",
-        "expectation": "页面跳转至cowork相关功能页或cowork入口对应的子页面",
-        "preconditions": "已登录个人账号，当前处于首页",
+        "instructionId": "0d3ffb3d-e5d8-4482-9c57-d1b9e8fe4eff",
+        "expectation": "进入WPS AI 首页或功能模块（如WPS AI首页）",
+        "preconditions": "用户已登录个人账号，处于App首页",
         "actions": [
-          "找到并点击首页中的cowork入口入口"
+          "点击底部输入框进入WPS AI"
         ],
         "hints": [
-          "cowork入口在首页的具体位置可能因版本不同而异，可能是图标、卡片或列表项",
-          "本步仅为第一步，后续还有操作未完成"
+          "WPS AI入口可能以图标、卡片或入口按钮形式出现在首页，具体位置和样式因版本可能不同"
         ],
         "timeoutMs": 60000,
         "metadata": {
@@ -26,16 +25,17 @@
         }
       },
       {
-        "instructionId": "93548b34-119c-4a1c-8fc7-80ccccf8b528",
-        "expectation": "页面显示内容正在生成或已生成回复内容（如加载动画、思考中状态或最终输出文本）",
-        "preconditions": "已登录个人账号，主界面已加载完成，聊天输入区域或侧边栏入口可见",
+        "instructionId": "685da9b8-f410-462c-b72c-650209e545f8",
+        "expectation": "输入内容成功发送，AI返回生成内容并展示在对话区域中",
+        "preconditions": "已登录个人账号，处于WPS AI首页，底部可见输入框",
         "actions": [
-          "在聊天输入区域中输入文本内容",
-          "点击发送按钮"
+          "点击底部输入框",
+          "在输入框中输入文本内容",
+          "点击输入框右侧发送按钮"
         ],
         "hints": [
-          "若输入内容后发送未响应，可尝试点击侧边栏按钮确认功能是否正常",
-          "发送成功的界面表现因内容类型可能不同（文字回复、图片、卡片等）"
+          "发送按钮可能为圆形发送图标或'发送'文字按钮，文案因设备/语言可能不同",
+          "若输入框右侧显示为语音按钮，可先切换为文字输入模式再输入内容"
         ],
         "timeoutMs": 60000,
         "metadata": {
@@ -50,7 +50,2154 @@
         }
       }
     ],
-    "compiledAt": "2026-07-22T02:50:11.182Z",
+    "compiledAt": "2026-07-23T06:01:04.615Z",
     "sourceTag": "panel-auto-save"
+  },
+  "cowork-8741aff47a21": {
+    "caseId": "cowork-8741aff47a21",
+    "instructions": [
+      {
+        "instructionId": "9a5cc747-e6eb-42f0-9c1c-4006e14ea0d7",
+        "expectation": "界面从WPS首页跳转到WPS AI/Cowork首页，底部输入框区域变为AI对话式输入样式",
+        "preconditions": "WPS首页已加载完成，底部可见输入框区域",
+        "actions": [
+          "点击底部输入框"
+        ],
+        "hints": [
+          "目标状态参考：WPS AI 首页，点击底部输入框和拍照按钮均可进入"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-8741aff47a21",
+          "stepId": "step-1",
+          "stepOrder": 1,
+          "title": "点击底部输入框",
+          "source": "cowork-csv",
+          "stepText": "在WPS首页点击底部输入框",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      }
+    ],
+    "reports": [
+      {
+        "ok": true,
+        "issues": [],
+        "draft": {
+          "preconditions": "WPS首页已加载完成，底部可见输入框区域",
+          "actions": [
+            "点击底部输入框"
+          ],
+          "expectation": "界面从WPS首页跳转到WPS AI/Cowork首页，底部输入框区域变为AI对话式输入样式",
+          "hints": [
+            "目标状态参考：WPS AI 首页，点击底部输入框和拍照按钮均可进入"
+          ],
+          "timeoutMs": 60000
+        }
+      }
+    ],
+    "compiledAt": "2026-07-23T03:56:46.958Z",
+    "sourceTag": "llm"
+  },
+  "cowork-7e7fcc6930b9": {
+    "caseId": "cowork-7e7fcc6930b9",
+    "instructions": [
+      {
+        "instructionId": "403240d2-7a70-4a3a-99ac-be034c3da1da",
+        "expectation": "进入WPS AI 首页",
+        "preconditions": "处于WPS AI首页，页面顶部存在关闭按钮",
+        "actions": [
+          "如果当前处于WPS Office首页，点击底部输入框进入WPS AI"
+        ],
+        "hints": [
+          "关闭按钮可能以图标或文字形式呈现，需根据实际UI识别"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-7e7fcc6930b9",
+          "stepId": "step-1",
+          "stepOrder": 1,
+          "title": "关闭按钮",
+          "source": "cowork-csv",
+          "stepText": "点击顶部【关闭】",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      },
+      {
+        "instructionId": "a5a20b1c-d6d4-4769-8f87-34ce9cd5cda0",
+        "expectation": "页面已退出WPS AI首页，返回到上一级页面（如WPS主界面）",
+        "preconditions": "当前处于Cowork首页（WPS AI首页）",
+        "actions": [
+          "点击返回按钮确认返回上一级页面"
+        ],
+        "hints": [
+          "整案预期结果：正确退出/关闭Cowork首页",
+          "本步为最后一步，完成后应不再显示Cowork首页内容"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-7e7fcc6930b9",
+          "stepId": "step-2",
+          "stepOrder": 2,
+          "title": "关闭按钮",
+          "source": "cowork-csv",
+          "stepText": "确认返回上一级页面",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      }
+    ],
+    "compiledAt": "2026-07-23T06:03:47.581Z",
+    "sourceTag": "panel-auto-save"
+  },
+  "cowork-45f7cfd1b527": {
+    "caseId": "cowork-45f7cfd1b527",
+    "instructions": [
+      {
+        "instructionId": "6a4cbd3f-bddd-42e8-b8eb-234e9acbd4c9",
+        "expectation": "进入WPS AI 首页",
+        "preconditions": "WPS首页已加载完成",
+        "actions": [
+          "找到页面底部的输入框控件并点击"
+        ],
+        "hints": [
+          "目标控件为页面底部区域的输入框，可能占满宽度",
+          "输入框最右侧可能有切换语音/文字输入的按钮"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-45f7cfd1b527",
+          "stepId": "step-1",
+          "stepOrder": 1,
+          "title": "进入后返回",
+          "source": "cowork-csv",
+          "stepText": "在WPS首页点击底部输入框",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      },
+      {
+        "instructionId": "6211185b-dce6-48f4-a573-bec3ce1a67b2",
+        "expectation": "页面已返回至WPS首页，不再显示WPS AI的输入框与相关控件",
+        "preconditions": "当前处于WPS AI首页界面",
+        "actions": [
+          "点击页面右上角的关闭按钮",
+          "若右上角无关闭按钮则从屏幕左侧边缘向右侧滑返回"
+        ],
+        "hints": [
+          "关闭按钮的文案可能因版本不同而显示为X图标或关闭文字",
+          "侧滑返回需从屏幕左边缘向右滑动"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-45f7cfd1b527",
+          "stepId": "step-2",
+          "stepOrder": 2,
+          "title": "进入后返回",
+          "source": "cowork-csv",
+          "stepText": "点击右上角关闭按钮/侧滑返回",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      }
+    ],
+    "compiledAt": "2026-07-23T04:21:54.531Z",
+    "sourceTag": "panel-auto-save"
+  },
+  "cowork-e1cfb15d241e": {
+    "caseId": "cowork-e1cfb15d241e",
+    "instructions": [
+      {
+        "instructionId": "7d8baeac-c475-4f20-9f30-997a98825a0c",
+        "expectation": "底部输入框文本为空，无用户输入内容",
+        "preconditions": "App 已启动并处于 WPS AI 首页，底部输入框框架已加载完成",
+        "actions": [
+          "定位底部输入框",
+          "确认输入框内容为空"
+        ],
+        "hints": [
+          "输入框可能显示占位提示文字（如'问我什么...'），占位文字不属于用户输入内容"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-e1cfb15d241e",
+          "stepId": "step-1",
+          "stepOrder": 1,
+          "title": "默认态按钮",
+          "source": "cowork-csv",
+          "stepText": "确认输入框为空",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      },
+      {
+        "instructionId": "e86fa151-ca88-4747-9302-e24b20c3a7e8",
+        "expectation": "底部输入框区域同时展示+号按钮、拍照/相册按钮、语音按钮三个功能控件",
+        "preconditions": "WPS AI 首页已加载，底部输入框框架可见",
+        "actions": [
+          "定位底部输入框区域",
+          "确认输入框内或紧邻位置存在【+号】按钮控件",
+          "确认输入框内或紧邻位置存在【拍照】按钮控件",
+          "确认输入框内或紧邻位置存在【语音】按钮控件"
+        ],
+        "hints": [
+          "三个按钮可能以图标形式展示，需结合控件角色/语义而非仅凭按钮文案判断",
+          "按钮排列顺序可能因版本不同而不同，只需确认三者均存在"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-e1cfb15d241e",
+          "stepId": "step-2",
+          "stepOrder": 2,
+          "title": "默认态按钮",
+          "source": "cowork-csv",
+          "stepText": "查看底部输入框是否展示【+号】【拍照】【语音】",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      }
+    ],
+    "reports": [
+      {
+        "ok": true,
+        "issues": [],
+        "draft": {
+          "preconditions": "App 已启动并处于 WPS AI 首页，底部输入框框架已加载完成",
+          "actions": [
+            "定位底部输入框",
+            "确认输入框内容为空"
+          ],
+          "expectation": "底部输入框文本为空，无用户输入内容",
+          "hints": [
+            "输入框可能显示占位提示文字（如'问我什么...'），占位文字不属于用户输入内容"
+          ],
+          "timeoutMs": 60000
+        }
+      },
+      {
+        "ok": true,
+        "issues": [],
+        "draft": {
+          "preconditions": "WPS AI 首页已加载，底部输入框框架可见",
+          "actions": [
+            "定位底部输入框区域",
+            "确认输入框内或紧邻位置存在【+号】按钮控件",
+            "确认输入框内或紧邻位置存在【拍照】按钮控件",
+            "确认输入框内或紧邻位置存在【语音】按钮控件"
+          ],
+          "expectation": "底部输入框区域同时展示+号按钮、拍照/相册按钮、语音按钮三个功能控件",
+          "hints": [
+            "三个按钮可能以图标形式展示，需结合控件角色/语义而非仅凭按钮文案判断",
+            "按钮排列顺序可能因版本不同而不同，只需确认三者均存在"
+          ],
+          "timeoutMs": 60000
+        }
+      }
+    ],
+    "compiledAt": "2026-07-23T04:22:18.929Z",
+    "sourceTag": "llm"
+  },
+  "cowork-0828768fa03e": {
+    "caseId": "cowork-0828768fa03e",
+    "instructions": [
+      {
+        "instructionId": "3dbb1c22-eeaf-49be-bb61-d4faa1538d89",
+        "expectation": "界面跳转到WPS AI首页，可见AI对话输入区域",
+        "preconditions": "已登录个人账号，处于App首页",
+        "actions": [
+          "点击首页上的WPS AI入口"
+        ],
+        "hints": [
+          "WPS AI入口在首页的位置可能因版本不同而有所变化，请根据实际界面定位"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-0828768fa03e",
+          "stepId": "step-1",
+          "stepOrder": 1,
+          "title": "个人账号使用WPS AI",
+          "source": "cowork-csv",
+          "stepText": "点击首页WPS AI入口",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      },
+      {
+        "instructionId": "059e003e-a4af-4ce5-806b-abd85400cf8c",
+        "expectation": "输入框已清空或显示已发送状态，对话区域正常展示AI返回的生成内容",
+        "preconditions": "已进入WPS AI首页，底部存在输入框及交互按钮",
+        "actions": [
+          "点击底部输入框中央，激活输入模式，然后输入“你好”",
+          "点击输入框右侧的发送按钮",
+          "等待AI生成内容并展示在对话区域"
+        ],
+        "hints": [
+          "发送按钮可能显示为发送图标（如箭头/纸飞机形状），而非固定文案",
+          "AI生成内容需要一定网络请求时间，请等待内容加载完成",
+          "若意图为侧边栏场景：点击左上角菜单按钮，侧边栏正常展开"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-0828768fa03e",
+          "stepId": "step-2",
+          "stepOrder": 2,
+          "title": "个人账号使用WPS AI",
+          "source": "cowork-csv",
+          "stepText": "输入内容点击发送/点击侧边栏按钮",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      }
+    ],
+    "compiledAt": "2026-07-23T07:54:56.099Z",
+    "sourceTag": "panel-auto-save"
+  },
+  "cowork-48b3ffd8ab5f": {
+    "caseId": "cowork-48b3ffd8ab5f",
+    "instructions": [
+      {
+        "instructionId": "3879a116-07a1-4f0e-b623-fd7fa7671d4e",
+        "expectation": "WPS AI 首页被关闭，界面返回至上一级页面或退出当前窗口",
+        "preconditions": "WPS AI 首页已展示，顶部导航栏存在【关闭】按钮",
+        "actions": [
+          "点击顶部导航栏的【关闭】按钮"
+        ],
+        "hints": [
+          "关闭按钮通常位于顶部导航栏左侧返回箭头或右上角关闭图标位置，文案可能为「关闭」「返回」或仅显示图标",
+          "关闭后的目标页面取决于进入 WPS AI 首页前的入口页面"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-48b3ffd8ab5f",
+          "stepId": "step-1",
+          "stepOrder": 1,
+          "title": "关闭按钮",
+          "source": "cowork-csv",
+          "stepText": "点击顶部【关闭】",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      },
+      {
+        "instructionId": "39d9eb23-16bc-4a87-936f-5a6aa861cda7",
+        "expectation": "界面已离开 WPS AI 首页，回到上一级页面或上一应用层级",
+        "preconditions": "WPS AI 首页已打开并处于可见状态",
+        "actions": [
+          "点击页面左上角或左侧的返回/关闭按钮（若存在）",
+          "若未找到返回/关闭按钮，则触发系统级返回操作"
+        ],
+        "hints": [
+          "返回/关闭按钮可能位于页面左上角，图标为返回箭头或关闭符号",
+          "若首页无显式关闭按钮，使用系统返回手势/按键亦可达成目标"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-48b3ffd8ab5f",
+          "stepId": "step-2",
+          "stepOrder": 2,
+          "title": "关闭按钮",
+          "source": "cowork-csv",
+          "stepText": "确认返回上一级页面",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      }
+    ],
+    "reports": [
+      {
+        "ok": true,
+        "issues": [],
+        "draft": {
+          "preconditions": "WPS AI 首页已展示，顶部导航栏存在【关闭】按钮",
+          "actions": [
+            "点击顶部导航栏的【关闭】按钮"
+          ],
+          "expectation": "WPS AI 首页被关闭，界面返回至上一级页面或退出当前窗口",
+          "hints": [
+            "关闭按钮通常位于顶部导航栏左侧返回箭头或右上角关闭图标位置，文案可能为「关闭」「返回」或仅显示图标",
+            "关闭后的目标页面取决于进入 WPS AI 首页前的入口页面"
+          ],
+          "timeoutMs": 60000
+        }
+      },
+      {
+        "ok": true,
+        "issues": [],
+        "draft": {
+          "preconditions": "WPS AI 首页已打开并处于可见状态",
+          "actions": [
+            "点击页面左上角或左侧的返回/关闭按钮（若存在）",
+            "若未找到返回/关闭按钮，则触发系统级返回操作"
+          ],
+          "expectation": "界面已离开 WPS AI 首页，回到上一级页面或上一应用层级",
+          "hints": [
+            "返回/关闭按钮可能位于页面左上角，图标为返回箭头或关闭符号",
+            "若首页无显式关闭按钮，使用系统返回手势/按键亦可达成目标"
+          ],
+          "timeoutMs": 60000
+        }
+      }
+    ],
+    "compiledAt": "2026-07-23T06:12:07.550Z",
+    "sourceTag": "llm"
+  },
+  "cowork-8934aecfc94b": {
+    "caseId": "cowork-8934aecfc94b",
+    "instructions": [
+      {
+        "instructionId": "e6a07c76-e5d3-4ebe-80c8-cf831e809b69",
+        "expectation": "底部输入框控件存在且输入区域无用户输入内容（可能显示占位提示文字）",
+        "preconditions": "已进入 WPS AI 首页",
+        "actions": [
+          "如果没有在WPS AI 首页，点击底部输入框，进入WPS AI 首页"
+        ],
+        "hints": [
+          "输入框可能显示占位符文案，需区分占位符与实际输入内容"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-8934aecfc94b",
+          "stepId": "step-1",
+          "stepOrder": 1,
+          "title": "默认态按钮",
+          "source": "cowork-csv",
+          "stepText": "确认输入框为空",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      },
+      {
+        "instructionId": "ac916a1a-0624-484e-94b4-acfc40fe2fea",
+        "expectation": "底部输入框区域同时展示 +号按钮、拍照/相册按钮、语音按钮三个控件",
+        "preconditions": "已处于 WPS AI 首页，底部输入框可见",
+        "actions": [
+          "查看底部输入框区域，确认是否存在 +号按钮",
+          "查看底部输入框区域，确认是否存在拍照/相册按钮",
+          "查看底部输入框区域，确认是否存在语音按钮"
+        ],
+        "hints": [
+          "控件文案或图标可能因设备/语言/版本不同而有所差异，应以控件角色（+号添加、拍照/相册、语音输入）为准"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-8934aecfc94b",
+          "stepId": "step-2",
+          "stepOrder": 2,
+          "title": "默认态按钮",
+          "source": "cowork-csv",
+          "stepText": "查看底部输入框是否展示【+号】【拍照】【语音】",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      }
+    ],
+    "compiledAt": "2026-07-23T06:54:56.292Z",
+    "sourceTag": "panel-auto-save"
+  },
+  "cowork-60ef29d4a67d": {
+    "caseId": "cowork-60ef29d4a67d",
+    "instructions": [
+      {
+        "instructionId": "79f6c278-48d9-4fd6-96e2-053f46fd3d44",
+        "expectation": "当前已经在WPS AI 首页",
+        "preconditions": "",
+        "actions": [
+          "如果没有在WPS AI 首页，点击底部输入框，进入WPS AI 首页"
+        ],
+        "hints": [
+          "如果是在WPS 首页，点击底部输入框进入WPS AI 首页",
+          "如果在其他页面，杀掉WPS 进程重新进入WPS Office"
+        ]
+      },
+      {
+        "instructionId": "b06f00d3-e2e4-4df3-8e44-d856efc8a053",
+        "expectation": "输入框内显示已输入的文字内容，底部按钮进入可提交态",
+        "preconditions": "WPS AI 首页已打开，底部输入框可见且处于可编辑状态",
+        "actions": [
+          "点击底部输入框聚焦",
+          "在输入框中输入任意文字"
+        ],
+        "hints": [
+          "输入框位于页面底部，可能带有占位提示文字",
+          "按钮态变化可能表现为颜色/可用性/文案变化"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-60ef29d4a67d",
+          "stepId": "step-1",
+          "stepOrder": 1,
+          "title": "输入文字后按钮态",
+          "source": "cowork-csv",
+          "stepText": "输入任意文字",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      },
+      {
+        "instructionId": "5d1d5696-136b-4376-87c2-58af45cd398c",
+        "expectation": "底部输入框区域显示+号、语音切换、发送按钮；拍照按钮已隐藏不显示",
+        "preconditions": "WPS AI 首页已打开，底部输入框已激活且已输入文字",
+        "actions": [
+          "确认页面上【拍照】按钮已隐藏不可见",
+          "确认底部输入框区域出现【发送】按钮"
+        ],
+        "hints": [
+          "发送按钮可能因设备/语言显示不同文案（如箭头图标或「发送」等），以按钮角色和位置为准"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-60ef29d4a67d",
+          "stepId": "step-2",
+          "stepOrder": 2,
+          "title": "输入文字后按钮态",
+          "source": "cowork-csv",
+          "stepText": "观察【拍照】是否隐藏、【发送】是否出现",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      }
+    ],
+    "compiledAt": "2026-07-23T06:56:39.092Z",
+    "sourceTag": "panel-auto-save"
+  },
+  "cowork-f589447ae7ad": {
+    "caseId": "cowork-f589447ae7ad",
+    "instructions": [
+      {
+        "instructionId": "8c247fc5-0d4d-44c2-9e76-080b4dc40604",
+        "expectation": "处于输入激活模式",
+        "preconditions": "WPS AI 首页已打开，底部输入框已激活并可输入文字",
+        "actions": [
+          "点击底部输入框中央，进入输入模式"
+        ],
+        "hints": [
+          "换行可通过键盘上的换行/回车键实现",
+          "文案因设备/语言可能不同"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-f589447ae7ad",
+          "stepId": "step-1",
+          "stepOrder": 1,
+          "title": "多行文本输入",
+          "source": "cowork-csv",
+          "stepText": "输入多行文字（5行以上）",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      },
+      {
+        "instructionId": "3f5fb47d-da29-4a44-804e-7410b283e879",
+        "expectation": "输入框内显示已输入的 5 行以上多行文字内容，每行文字清晰可见，光标位于最后一行末尾",
+        "preconditions": "",
+        "actions": [
+          "在底部输入框中输入多行文字，至少输入 5 行内容，每行之间通过换行符分隔"
+        ],
+        "hints": []
+      },
+      {
+        "instructionId": "791dbe8a-64e2-486a-aa9d-668736a57fd4",
+        "expectation": "输入框高度随输入内容自动扩展，输入框内内容支持上下滑动，顶部区域与输入框边缘无重叠遮挡",
+        "preconditions": "已处于 WPS AI 首页，底部输入框可见并可交互",
+        "actions": [
+          "在输入框区域内上下滑动，验证内容可滚动且无遮挡"
+        ],
+        "hints": [
+          "输入框高度扩展后，顶部区域（如标题、logo 等）应保持可见且不被覆盖",
+          "滑动流畅度可作为辅助判断依据",
+          "若输入框未自动扩展，可能需多次输入或粘贴多行内容触发"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-f589447ae7ad",
+          "stepId": "step-2",
+          "stepOrder": 2,
+          "title": "多行文本输入",
+          "source": "cowork-csv",
+          "stepText": "观察输入框高度与顶部区域",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      }
+    ],
+    "compiledAt": "2026-07-23T08:03:46.185Z",
+    "sourceTag": "panel-auto-save"
+  },
+  "cowork-e1d1ccc62e2d": {
+    "caseId": "cowork-e1d1ccc62e2d",
+    "instructions": [
+      {
+        "instructionId": "e3609df3-1bc1-4f89-8851-accefe639e70",
+        "expectation": "底部弹出功能面板（含相册、文件等入口选项）",
+        "preconditions": "WPS AI 首页已加载完成，底部导航栏可见",
+        "actions": [
+          "点击底部导航栏的+号按钮"
+        ],
+        "hints": [
+          "面板弹出后需等待动画完成再核验",
+          "面板入口文案可能因设备/语言不同"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-e1d1ccc62e2d",
+          "stepId": "step-1",
+          "stepOrder": 1,
+          "title": "点击+号打开面板",
+          "source": "cowork-csv",
+          "stepText": "点击【+号】",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      },
+      {
+        "instructionId": "e224856b-2e20-44da-b7cc-6def7838b12e",
+        "expectation": "附件区可见三个入口控件：拍照、相册、文件（按钮文案可能因设备/语言略有不同，但控件角色应为拍照入口、相册入口、文件入口）",
+        "preconditions": "WPS AI 首页已显示，底部+号面板已打开",
+        "actions": [
+          "查看并确认附件区已展示"
+        ],
+        "hints": [
+          "可结合截图核验三个入口的布局与文案",
+          "参考合法转移：从WPS AI首页可进入相册或文件选择器"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-e1d1ccc62e2d",
+          "stepId": "step-2",
+          "stepOrder": 2,
+          "title": "点击+号打开面板",
+          "source": "cowork-csv",
+          "stepText": "查看附件区",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      }
+    ],
+    "compiledAt": "2026-07-23T07:08:16.636Z",
+    "sourceTag": "panel-auto-save"
+  },
+  "cowork-7553710c0ce2": {
+    "caseId": "cowork-7553710c0ce2",
+    "instructions": [
+      {
+        "instructionId": "c041b90b-cf6e-4f64-b042-d828d6d89be0",
+        "expectation": "屏幕底部弹出+号面板，面板中包含多个功能选项（如相册、拍照等入口）",
+        "preconditions": "用户处于WPS AI首页",
+        "actions": [
+          "找到并点击底部输入框右侧的【+号】按钮，打开+号面板"
+        ],
+        "hints": [
+          "+号按钮通常位于底部输入框或输入框左侧",
+          "面板弹出后可能有轻微动画效果，等待动画完成后再进行下一步操作"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-7553710c0ce2",
+          "stepId": "step-1",
+          "stepOrder": 1,
+          "title": "附件-相册",
+          "source": "cowork-csv",
+          "stepText": "打开【+号】",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      },
+      {
+        "instructionId": "4694e604-9075-4bad-995b-90318f6763c6",
+        "expectation": "界面跳转到相册选择器页面，展示手机相册中的图片缩略图列表，顶部有导航栏返回按钮与标题，底部有图片多选操作栏或确认按钮",
+        "preconditions": "WPS AI 首页已打开，底部输入框右侧的「+」号面板已展开，面板中包含「相册」入口",
+        "actions": [
+          "点击「+」号面板中的【相册】按钮"
+        ],
+        "hints": [
+          "相册页面可能因设备权限未授予而先弹出权限请求，若出现权限弹窗则点击允许/允许访问所有照片",
+          "若相册为空或无图片，可能显示空状态提示页"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-7553710c0ce2",
+          "stepId": "step-2",
+          "stepOrder": 2,
+          "title": "附件-相册",
+          "source": "cowork-csv",
+          "stepText": "点击【相册】",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      },
+      {
+        "instructionId": "7832c55e-79c1-4140-b1d1-e79ebeb89820",
+        "expectation": "相册界面已关闭，回到WPS AI界面，已选图片以缩略图或预览形式显示在编辑区域",
+        "preconditions": "WPS AI已打开，+号面板已展开，相册入口可见",
+        "actions": [
+          "点击相册入口进入相册选图界面",
+          "在相册列表中点击选择一张图片",
+          "点击确认/完成按钮完成选图"
+        ],
+        "hints": [
+          "选图按钮文案可能因设备/语言不同",
+          "若相册需要权限，先授权相册权限"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-7553710c0ce2",
+          "stepId": "step-3",
+          "stepOrder": 3,
+          "title": "附件-相册",
+          "source": "cowork-csv",
+          "stepText": "在WPS相册选图确认",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      }
+    ],
+    "compiledAt": "2026-07-23T07:11:52.034Z",
+    "sourceTag": "panel-auto-save"
+  },
+  "cowork-dcc31c33a7ab": {
+    "caseId": "cowork-dcc31c33a7ab",
+    "instructions": [
+      {
+        "instructionId": "c9258fef-21fe-4a62-b1fa-1264e7337927",
+        "expectation": "底部弹出+号面板（含各类功能入口如文件、图片等选项的横向或网格面板），输入框被顶起或面板覆盖底部区域",
+        "preconditions": "WPS AI 首页已加载，底部可见输入框及输入框右侧的功能按钮",
+        "actions": [
+          "点击底部的【+号】按钮，打开+号面板"
+        ],
+        "hints": [
+          "+号按钮可能位于底部输入框左侧或右侧，注意区分于语音按钮、拍照按钮等其他功能按钮",
+          "面板弹出后可能有短暂动画，等待动画完成后再进行后续操作"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-dcc31c33a7ab",
+          "stepId": "step-1",
+          "stepOrder": 1,
+          "title": "附件-文件",
+          "source": "cowork-csv",
+          "stepText": "打开【+号】",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      },
+      {
+        "instructionId": "12a5b40b-a6f0-4ef4-9d77-684c30f72a93",
+        "expectation": "界面切换到文件选择器/文件列表页面，或出现文件浏览相关的控件（如文件列表、文件夹、上传按钮等）",
+        "preconditions": "WPS AI 首页已加载，底部输入框右侧的「+」号面板已展开",
+        "actions": [
+          "在「+」号面板中点击【文件】选项"
+        ],
+        "hints": [
+          "「+」号面板中可能存在多个附件类型入口（如拍照、文件等），需准确定位到「文件」入口",
+          "文件选择器可能调用系统文件选择器或应用内文件浏览组件"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-dcc31c33a7ab",
+          "stepId": "step-2",
+          "stepOrder": 2,
+          "title": "附件-文件",
+          "source": "cowork-csv",
+          "stepText": "点击【文件】",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      },
+      {
+        "instructionId": "c9050b22-96f9-450c-89ef-50d0aa76e7ee",
+        "expectation": "文件选择器关闭，选中的文件以附件/文件卡片形式出现在编辑区域或附件列表中",
+        "preconditions": "已打开+号面板，进入文件选择器，当前展示最近文件Tab界面",
+        "actions": [
+          "在文件选择器中定位并点击最近文件的第一个文件条目",
+          "点击主确认按钮完成文件选择"
+        ],
+        "hints": [
+          "最近Tab可能展示的是近期打开过的文档文件",
+          "确认按钮文案因设备/语言可能不同，优先点击主按钮或带确认语义的按钮",
+          "若最近列表为空，可尝试点击其他Tab（如文档、下载等）选择一个文件"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-dcc31c33a7ab",
+          "stepId": "step-3",
+          "stepOrder": 3,
+          "title": "附件-文件",
+          "source": "cowork-csv",
+          "stepText": "在最近Tab选文件确认",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      }
+    ],
+    "reports": [
+      {
+        "ok": true,
+        "issues": [],
+        "draft": {
+          "preconditions": "WPS AI 首页已加载，底部可见输入框及输入框右侧的功能按钮",
+          "actions": [
+            "点击底部的【+号】按钮，打开+号面板"
+          ],
+          "expectation": "底部弹出+号面板（含各类功能入口如文件、图片等选项的横向或网格面板），输入框被顶起或面板覆盖底部区域",
+          "hints": [
+            "+号按钮可能位于底部输入框左侧或右侧，注意区分于语音按钮、拍照按钮等其他功能按钮",
+            "面板弹出后可能有短暂动画，等待动画完成后再进行后续操作"
+          ],
+          "timeoutMs": 60000
+        }
+      },
+      {
+        "ok": true,
+        "issues": [],
+        "draft": {
+          "preconditions": "WPS AI 首页已加载，底部输入框右侧的「+」号面板已展开",
+          "actions": [
+            "在「+」号面板中点击【文件】选项"
+          ],
+          "expectation": "界面切换到文件选择器/文件列表页面，或出现文件浏览相关的控件（如文件列表、文件夹、上传按钮等）",
+          "hints": [
+            "「+」号面板中可能存在多个附件类型入口（如拍照、文件等），需准确定位到「文件」入口",
+            "文件选择器可能调用系统文件选择器或应用内文件浏览组件"
+          ],
+          "timeoutMs": 60000
+        }
+      },
+      {
+        "ok": true,
+        "issues": [],
+        "draft": {
+          "preconditions": "已打开+号面板，进入文件选择器，当前展示最近文件Tab界面",
+          "actions": [
+            "在文件选择器中定位并点击最近文件的第一个文件条目",
+            "点击主确认按钮完成文件选择"
+          ],
+          "expectation": "文件选择器关闭，选中的文件以附件/文件卡片形式出现在编辑区域或附件列表中",
+          "hints": [
+            "最近Tab可能展示的是近期打开过的文档文件",
+            "确认按钮文案因设备/语言可能不同，优先点击主按钮或带确认语义的按钮",
+            "若最近列表为空，可尝试点击其他Tab（如文档、下载等）选择一个文件"
+          ],
+          "timeoutMs": 60000
+        }
+      }
+    ],
+    "compiledAt": "2026-07-23T07:16:29.651Z",
+    "sourceTag": "llm"
+  },
+  "cowork-c1a955f555a2": {
+    "caseId": "cowork-c1a955f555a2",
+    "instructions": [
+      {
+        "instructionId": "34dd8426-1105-4327-b3d3-1cc32dbf08a8",
+        "expectation": "底部输入框内无残留文字，输入框呈现空白可输入状态",
+        "preconditions": "WPS AI 首页已显示，底部输入框中已有文字内容",
+        "actions": [
+          "点击底部输入框中央，进入编辑模式",
+          "点击键盘或菜单中的删除/退格按钮清空已选文字"
+        ],
+        "hints": [
+          "若长按未能一次全选，可重复长按或手动拖动选区确保全部文字被选中",
+          "删除控件可能显示为退格图标或'删除'文案，因设备/系统不同而差异"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-c1a955f555a2",
+          "stepId": "step-1",
+          "stepOrder": 1,
+          "title": "清空输入内容",
+          "source": "cowork-csv",
+          "stepText": "删除输入框全部文字",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      },
+      {
+        "instructionId": "1f438dec-0d7b-4f25-8b84-b71a0352c041",
+        "expectation": "输入框最右侧按钮恢复为默认态（图标/颜色/样式回归初始状态，非高亮或选中态）",
+        "preconditions": "WPS AI首页已打开，底部输入框已有输入内容，输入框最右侧的切换按钮处于非默认态（如语音输入态）",
+        "actions": [
+          "观察输入框最右侧按钮的视觉状态是否恢复为默认态"
+        ],
+        "hints": [
+          "默认态的具体图标可能因设备或输入模式而异，请确认按钮未处于激活/选中状态",
+          "可与页面刚加载时的按钮状态对比确认"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-c1a955f555a2",
+          "stepId": "step-2",
+          "stepOrder": 2,
+          "title": "清空输入内容",
+          "source": "cowork-csv",
+          "stepText": "观察按钮恢复默认态",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      }
+    ],
+    "compiledAt": "2026-07-23T08:20:54.531Z",
+    "sourceTag": "panel-auto-save"
+  },
+  "cowork-8d62ba14a887": {
+    "caseId": "cowork-8d62ba14a887",
+    "instructions": [
+      {
+        "instructionId": "aa3086e9-9c42-4eed-aee3-7b72a09cb8d3",
+        "expectation": "底部弹出「+号」面板，面板内展示多个功能入口（如拍照、文档等图标按钮）",
+        "preconditions": "WPS AI 首页已加载，底部可见输入框区域",
+        "actions": [
+          "找到并打开输入框左侧的「+号」面板按钮"
+        ],
+        "hints": [
+          "面板可能从底部滑出",
+          "功能入口图标可能因版本/设备略有差异"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-8d62ba14a887",
+          "stepId": "step-1",
+          "stepOrder": 1,
+          "title": "附件-拍照",
+          "source": "cowork-csv",
+          "stepText": "打开【+号】面板",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      },
+      {
+        "instructionId": "d6eb49f3-59f7-44c2-a9dc-a91c9494ce55",
+        "expectation": "页面跳转至相机拍摄界面，或弹出拍照/相册选择器（包含拍照、从相册选择等选项）",
+        "preconditions": "WPS AI首页已打开，+号面板已展开，可见【拍照】入口",
+        "actions": [
+          "点击【拍照】"
+        ],
+        "hints": [
+          "若设备无相机权限，可能先弹出权限请求弹窗",
+          "拍照按钮可能位于+号面板的附件区域"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-8d62ba14a887",
+          "stepId": "step-2",
+          "stepOrder": 2,
+          "title": "附件-拍照",
+          "source": "cowork-csv",
+          "stepText": "点击【拍照】",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      },
+      {
+        "instructionId": "05d8e709-fddf-4255-aea7-d3db37dcbef3",
+        "expectation": "底部输入框上方区域显示已选照片的缩略图预览，输入框可正常输入文字",
+        "preconditions": "相机已调起并完成拍照，用户已确认选择照片",
+        "actions": [
+          "确认输入框上方显示已拍摄图片的缩略图预览"
+        ],
+        "hints": [
+          "输入框可能支持编辑已选图片的描述或备注",
+          "缩略图可能附带删除/重新选择按钮"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-8d62ba14a887",
+          "stepId": "step-3",
+          "stepOrder": 3,
+          "title": "附件-拍照",
+          "source": "cowork-csv",
+          "stepText": "拍照确认后查看输入框上方",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      }
+    ],
+    "reports": [
+      {
+        "ok": true,
+        "issues": [],
+        "draft": {
+          "preconditions": "WPS AI 首页已加载，底部可见输入框区域",
+          "actions": [
+            "找到并打开输入框左侧的「+号」面板按钮"
+          ],
+          "expectation": "底部弹出「+号」面板，面板内展示多个功能入口（如拍照、文档等图标按钮）",
+          "hints": [
+            "面板可能从底部滑出",
+            "功能入口图标可能因版本/设备略有差异"
+          ],
+          "timeoutMs": 60000
+        }
+      },
+      {
+        "ok": true,
+        "issues": [],
+        "draft": {
+          "preconditions": "WPS AI首页已打开，+号面板已展开，可见【拍照】入口",
+          "actions": [
+            "点击【拍照】"
+          ],
+          "expectation": "页面跳转至相机拍摄界面，或弹出拍照/相册选择器（包含拍照、从相册选择等选项）",
+          "hints": [
+            "若设备无相机权限，可能先弹出权限请求弹窗",
+            "拍照按钮可能位于+号面板的附件区域"
+          ],
+          "timeoutMs": 60000
+        }
+      },
+      {
+        "ok": true,
+        "issues": [],
+        "draft": {
+          "preconditions": "相机已调起并完成拍照，用户已确认选择照片",
+          "actions": [
+            "确认输入框上方显示已拍摄图片的缩略图预览"
+          ],
+          "expectation": "底部输入框上方区域显示已选照片的缩略图预览，输入框可正常输入文字",
+          "hints": [
+            "输入框可能支持编辑已选图片的描述或备注",
+            "缩略图可能附带删除/重新选择按钮"
+          ],
+          "timeoutMs": 60000
+        }
+      }
+    ],
+    "compiledAt": "2026-07-23T07:23:29.477Z",
+    "sourceTag": "llm"
+  },
+  "cowork-ff2c4a06ac64": {
+    "caseId": "cowork-ff2c4a06ac64",
+    "instructions": [
+      {
+        "instructionId": "5b02e963-2b23-4a1e-8b4b-9bc06c83c9a4",
+        "expectation": "界面显示WPS AI首页，包含底部输入框区域及拍照相关入口控件",
+        "preconditions": "相机权限已拒绝；App已启动",
+        "actions": [
+          "点击底部输入框或拍照按钮，进入WPS AI首页"
+        ],
+        "metadata": {
+          "caseId": "cowork-ff2c4a06ac64",
+          "stepId": "step-1",
+          "stepOrder": 1,
+          "title": "无相机权限点击相机",
+          "source": "cowork-csv",
+          "stepText": "进入WPS首页",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      },
+      {
+        "instructionId": "9641d974-0b94-43a8-95c4-39057ae604b9",
+        "expectation": "屏幕弹出相机权限授权弹窗（系统级权限请求对话框）",
+        "preconditions": "相机权限已拒绝；用户位于WPS AI首页，底部输入框可见",
+        "actions": [
+          "定位底部输入框右侧的拍照按钮并点击"
+        ],
+        "hints": [
+          "弹窗文案因设备品牌/系统版本可能不同，请以系统权限弹窗行为为准",
+          "若系统未弹出权限弹窗则视为异常"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-ff2c4a06ac64",
+          "stepId": "step-2",
+          "stepOrder": 2,
+          "title": "无相机权限点击相机",
+          "source": "cowork-csv",
+          "stepText": "点击底部输入框右侧【拍照】按钮",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      }
+    ],
+    "compiledAt": "2026-07-23T08:28:54.350Z",
+    "sourceTag": "panel-auto-save"
+  },
+  "cowork-88e9db3752ea": {
+    "caseId": "cowork-88e9db3752ea",
+    "instructions": [
+      {
+        "instructionId": "88ee3baf-e653-407d-a733-3f39e98bed0f",
+        "expectation": "屏幕切换至相机取景界面，可见拍照按钮及取消/关闭按钮",
+        "preconditions": "WPS AI 首页已加载，底部输入框右侧可见拍照按钮",
+        "actions": [
+          "点击底部输入框右侧的拍照按钮，进入相机取景界面"
+        ],
+        "hints": [
+          "相机取景界面可能包含权限请求弹窗，若出现需先授权相机权限",
+          "取消/关闭按钮的文案因设备/语言可能不同，可通过控件角色识别"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-88e9db3752ea",
+          "stepId": "step-1",
+          "stepOrder": 1,
+          "title": "拍照后取消或重拍",
+          "source": "cowork-csv",
+          "stepText": "点击【拍照】进入相机",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      },
+      {
+        "instructionId": "51965811-c11f-439d-a8f6-831ca2a2b5e0",
+        "expectation": "相机回到可拍摄状态，预览区不再显示上一张照片，拍摄按钮可用",
+        "preconditions": "相机已打开且已完成首次拍摄，预览界面显示已拍摄的照片，并存在重拍/取消/确认等操作的按钮",
+        "actions": [
+          "点击【重拍】按钮（或图标）"
+        ],
+        "hints": [
+          "重拍按钮可能以文字或图标形式出现，文案因设备/语言可能不同",
+          "若为图标形式，可通过图标语义（如旋转箭头、相机图标）识别"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-88e9db3752ea",
+          "stepId": "step-2",
+          "stepOrder": 2,
+          "title": "拍照后取消或重拍",
+          "source": "cowork-csv",
+          "stepText": "拍摄后点【重拍】再拍一张并确认",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      }
+    ],
+    "reports": [
+      {
+        "ok": true,
+        "issues": [],
+        "draft": {
+          "preconditions": "WPS AI 首页已加载，底部输入框右侧可见拍照按钮",
+          "actions": [
+            "点击底部输入框右侧的拍照按钮，进入相机取景界面"
+          ],
+          "expectation": "屏幕切换至相机取景界面，可见拍照按钮及取消/关闭按钮",
+          "hints": [
+            "相机取景界面可能包含权限请求弹窗，若出现需先授权相机权限",
+            "取消/关闭按钮的文案因设备/语言可能不同，可通过控件角色识别"
+          ],
+          "timeoutMs": 60000
+        }
+      },
+      {
+        "ok": true,
+        "issues": [],
+        "draft": {
+          "preconditions": "相机已打开且已完成首次拍摄，预览界面显示已拍摄的照片，并存在重拍/取消/确认等操作的按钮",
+          "actions": [
+            "点击【重拍】按钮（或图标）"
+          ],
+          "expectation": "相机回到可拍摄状态，预览区不再显示上一张照片，拍摄按钮可用",
+          "hints": [
+            "重拍按钮可能以文字或图标形式出现，文案因设备/语言可能不同",
+            "若为图标形式，可通过图标语义（如旋转箭头、相机图标）识别"
+          ],
+          "timeoutMs": 60000
+        }
+      }
+    ],
+    "compiledAt": "2026-07-23T07:39:37.463Z",
+    "sourceTag": "llm-partial"
+  },
+  "cowork-3beccf87b840": {
+    "caseId": "cowork-3beccf87b840",
+    "instructions": [
+      {
+        "instructionId": "ce450503-f1e0-4b4e-9f28-21b9b68193ac",
+        "expectation": "页面底部可见输入框与拍照按钮，整体布局为 WPS AI 首页",
+        "preconditions": "WPS App 已启动并处于初始界面",
+        "actions": [
+          "等待并确认页面加载为 WPS AI 首页"
+        ],
+        "hints": [
+          "若未自动跳转至 WPS AI 首页，可尝试点击底部输入框触发跳转"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-3beccf87b840",
+          "stepId": "step-1",
+          "stepOrder": 1,
+          "title": "点击输入框旁拍照按钮并完成拍照",
+          "source": "cowork-csv",
+          "stepText": "进入WPS首页",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      },
+      {
+        "instructionId": "01bfe621-a1c2-4edc-9bce-4ca3e4e025c1",
+        "expectation": "底部输入框右侧的拍照按钮被触发，可能唤起相机界面或弹出输入模式切换（语音/文字），输入框区域状态发生变化",
+        "preconditions": "WPS AI 首页已加载，底部输入框及其右侧按钮可见",
+        "actions": [
+          "点击底部输入框右侧的拍照按钮"
+        ],
+        "hints": [
+          "拍照按钮位于底部输入框最右侧",
+          "点击后可能进入相机拍摄界面或切换输入模式，具体取决于当前输入模式状态"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-3beccf87b840",
+          "stepId": "step-2",
+          "stepOrder": 2,
+          "title": "点击输入框旁拍照按钮并完成拍照",
+          "source": "cowork-csv",
+          "stepText": "点击底部输入框右侧【拍照】按钮",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      },
+      {
+        "instructionId": "5b9518ec-0768-4322-92f7-394e743ee3a8",
+        "expectation": "拍照完成，界面显示拍摄预览或提示确认/重新拍摄（出现确认保存按钮或取消/重拍按钮）",
+        "preconditions": "系统相机已启动，处于取景预览界面",
+        "actions": [
+          "在相机取景区域执行拍照操作"
+        ],
+        "hints": [
+          "拍照操作可能通过点击相机快门按钮或触摸屏幕快门区域触发",
+          "相机界面控件文案因设备型号可能不同，关注快门按钮或取景预览区域"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-3beccf87b840",
+          "stepId": "step-3",
+          "stepOrder": 3,
+          "title": "点击输入框旁拍照按钮并完成拍照",
+          "source": "cowork-csv",
+          "stepText": "系统相机启动后拍摄一张照片",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      },
+      {
+        "instructionId": "46e5b48f-8f3b-4a7e-94eb-89c7e2953421",
+        "expectation": "拍照确认页已关闭，界面返回 WPS AI 首页或编辑页，底部输入框旁显示已拍摄的缩略图/预览图",
+        "preconditions": "相机已打开并完成拍照，当前界面为拍照确认/预览页，底部显示确认使用按钮（文案因设备/语言可能不同，如「使用照片」「确认」「完成」等）",
+        "actions": [
+          "点击拍照确认页底部的主确认按钮（如「确认」「使用」「使用照片」等）"
+        ],
+        "hints": [
+          "若确认按钮不可见，检查页面是否滚动到底部",
+          "若出现编辑/裁剪提示，先关闭编辑后再确认"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-3beccf87b840",
+          "stepId": "step-4",
+          "stepOrder": 4,
+          "title": "点击输入框旁拍照按钮并完成拍照",
+          "source": "cowork-csv",
+          "stepText": "点击【确认/使用照片】",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      },
+      {
+        "instructionId": "91aa49a7-27d8-471e-bfe9-63d34cdbc524",
+        "expectation": "底部输入框内或输入框旁显示已拍摄照片的缩略图/图片预览控件",
+        "preconditions": "WPS AI 首页已显示，底部输入框存在，前面4步已完成拍照操作",
+        "actions": [
+          "返回首页到 WPS AI 首页",
+          "观察底部输入框区域是否显示照片缩略图或图片挂载控件"
+        ],
+        "hints": [
+          "缩略图可能显示在输入框内部左侧或输入框右侧",
+          "若图片未显示，可尝试点击输入框查看是否展开图片预览"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-3beccf87b840",
+          "stepId": "step-5",
+          "stepOrder": 5,
+          "title": "点击输入框旁拍照按钮并完成拍照",
+          "source": "cowork-csv",
+          "stepText": "返回首页观察输入框图片挂载状态",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      }
+    ],
+    "reports": [
+      {
+        "ok": true,
+        "issues": [],
+        "draft": {
+          "preconditions": "WPS App 已启动并处于初始界面",
+          "actions": [
+            "等待并确认页面加载为 WPS AI 首页"
+          ],
+          "expectation": "页面底部可见输入框与拍照按钮，整体布局为 WPS AI 首页",
+          "hints": [
+            "若未自动跳转至 WPS AI 首页，可尝试点击底部输入框触发跳转"
+          ],
+          "timeoutMs": 60000
+        }
+      },
+      {
+        "ok": true,
+        "issues": [],
+        "draft": {
+          "preconditions": "WPS AI 首页已加载，底部输入框及其右侧按钮可见",
+          "actions": [
+            "点击底部输入框右侧的拍照按钮"
+          ],
+          "expectation": "底部输入框右侧的拍照按钮被触发，可能唤起相机界面或弹出输入模式切换（语音/文字），输入框区域状态发生变化",
+          "hints": [
+            "拍照按钮位于底部输入框最右侧",
+            "点击后可能进入相机拍摄界面或切换输入模式，具体取决于当前输入模式状态"
+          ],
+          "timeoutMs": 60000
+        }
+      },
+      {
+        "ok": true,
+        "issues": [],
+        "draft": {
+          "preconditions": "系统相机已启动，处于取景预览界面",
+          "actions": [
+            "在相机取景区域执行拍照操作"
+          ],
+          "expectation": "拍照完成，界面显示拍摄预览或提示确认/重新拍摄（出现确认保存按钮或取消/重拍按钮）",
+          "hints": [
+            "拍照操作可能通过点击相机快门按钮或触摸屏幕快门区域触发",
+            "相机界面控件文案因设备型号可能不同，关注快门按钮或取景预览区域"
+          ],
+          "timeoutMs": 60000
+        }
+      },
+      {
+        "ok": true,
+        "issues": [],
+        "draft": {
+          "preconditions": "相机已打开并完成拍照，当前界面为拍照确认/预览页，底部显示确认使用按钮（文案因设备/语言可能不同，如「使用照片」「确认」「完成」等）",
+          "actions": [
+            "点击拍照确认页底部的主确认按钮（如「确认」「使用」「使用照片」等）"
+          ],
+          "expectation": "拍照确认页已关闭，界面返回 WPS AI 首页或编辑页，底部输入框旁显示已拍摄的缩略图/预览图",
+          "hints": [
+            "若确认按钮不可见，检查页面是否滚动到底部",
+            "若出现编辑/裁剪提示，先关闭编辑后再确认"
+          ],
+          "timeoutMs": 60000
+        }
+      },
+      {
+        "ok": true,
+        "issues": [],
+        "draft": {
+          "preconditions": "WPS AI 首页已显示，底部输入框存在，前面4步已完成拍照操作",
+          "actions": [
+            "返回首页到 WPS AI 首页",
+            "观察底部输入框区域是否显示照片缩略图或图片挂载控件"
+          ],
+          "expectation": "底部输入框内或输入框旁显示已拍摄照片的缩略图/图片预览控件",
+          "hints": [
+            "缩略图可能显示在输入框内部左侧或输入框右侧",
+            "若图片未显示，可尝试点击输入框查看是否展开图片预览"
+          ],
+          "timeoutMs": 60000
+        }
+      }
+    ],
+    "compiledAt": "2026-07-23T08:02:34.785Z",
+    "sourceTag": "llm"
+  },
+  "cowork-dc876dd344e4": {
+    "caseId": "cowork-dc876dd344e4",
+    "instructions": [
+      {
+        "instructionId": "71a6cd4c-cc3a-4578-8f4b-3efb55c98fdd",
+        "expectation": "输入框失去焦点后，已挂载的图片缩略图仍然保留在输入框上方/左侧未消失",
+        "preconditions": "WPS AI 首页已打开，底部输入框已挂载一张图片（图片缩略图显示在输入框左侧或上方）",
+        "actions": [
+          "点击输入框区域之外的空白区域，使输入框失去焦点"
+        ],
+        "hints": [
+          "本步验证图片挂载状态的持久性，确认失焦不会导致已挂载图片被移除",
+          "图片内容因设备可能不同，以缩略图形式存在于输入框附近即可"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-dc876dd344e4",
+          "stepId": "step-1",
+          "stepOrder": 1,
+          "title": "已挂载图片时查看输入框上方坑位",
+          "source": "cowork-csv",
+          "stepText": "保持输入框已挂载图片",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      },
+      {
+        "instructionId": "ec5c1012-6634-4311-879f-203a3980e0c3",
+        "expectation": "输入框上方区域不展示任何推荐/运营坑位卡片或入口控件，该区域为空白或被其他元素占据",
+        "preconditions": "WPS AI 首页已打开，底部输入框已可见，且已有图片挂载在输入框附近区域",
+        "actions": [
+          "观察输入框上方推荐/运营坑位区域是否存在可交互的卡片或入口控件"
+        ],
+        "hints": [
+          "预期结果可能因设备/语言不同而文案有差异，但坑位卡片区域应整体不展示",
+          "可截图与未挂载图片时的状态对比确认"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-dc876dd344e4",
+          "stepId": "step-2",
+          "stepOrder": 2,
+          "title": "已挂载图片时查看输入框上方坑位",
+          "source": "cowork-csv",
+          "stepText": "观察输入框上方推荐/运营坑位区域",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      }
+    ],
+    "reports": [
+      {
+        "ok": true,
+        "issues": [],
+        "draft": {
+          "preconditions": "WPS AI 首页已打开，底部输入框已挂载一张图片（图片缩略图显示在输入框左侧或上方）",
+          "actions": [
+            "点击输入框区域之外的空白区域，使输入框失去焦点"
+          ],
+          "expectation": "输入框失去焦点后，已挂载的图片缩略图仍然保留在输入框上方/左侧未消失",
+          "hints": [
+            "本步验证图片挂载状态的持久性，确认失焦不会导致已挂载图片被移除",
+            "图片内容因设备可能不同，以缩略图形式存在于输入框附近即可"
+          ],
+          "timeoutMs": 60000
+        }
+      },
+      {
+        "ok": true,
+        "issues": [],
+        "draft": {
+          "preconditions": "WPS AI 首页已打开，底部输入框已可见，且已有图片挂载在输入框附近区域",
+          "actions": [
+            "观察输入框上方推荐/运营坑位区域是否存在可交互的卡片或入口控件"
+          ],
+          "expectation": "输入框上方区域不展示任何推荐/运营坑位卡片或入口控件，该区域为空白或被其他元素占据",
+          "hints": [
+            "预期结果可能因设备/语言不同而文案有差异，但坑位卡片区域应整体不展示",
+            "可截图与未挂载图片时的状态对比确认"
+          ],
+          "timeoutMs": 60000
+        }
+      }
+    ],
+    "compiledAt": "2026-07-23T08:18:09.491Z",
+    "sourceTag": "llm"
+  },
+  "cowork-8a42001967fd": {
+    "caseId": "cowork-8a42001967fd",
+    "instructions": [
+      {
+        "instructionId": "b552b203-feab-4b4b-9f65-27a5e9d8512b",
+        "expectation": "界面从WPS AI首页切换到相机取景界面，可见相机取景预览画面及拍摄按钮",
+        "preconditions": "已处于WPS AI首页",
+        "actions": [
+          "找到并点击底部输入框右侧的拍照按钮"
+        ],
+        "hints": [
+          "拍照按钮位于底部输入框最右侧，可能用于在语音/文字输入之间切换",
+          "按钮图标通常为相机图标而非文字"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-8a42001967fd",
+          "stepId": "step-1",
+          "stepOrder": 1,
+          "title": "预览挂载图片",
+          "source": "cowork-csv",
+          "stepText": "点击拍照进入相机",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      },
+      {
+        "instructionId": "416b3ac7-ad25-4d67-90c3-4df3b8c58954",
+        "expectation": "照片已挂载到文档中，回到WPS AI首页或编辑界面",
+        "preconditions": "相机已打开，已拍摄一张照片，处于照片预览确认界面",
+        "actions": [
+          "点击确认按钮（如'确定'、'使用'、'完成'等，文案因设备/语言可能不同）"
+        ],
+        "hints": [
+          "确认按钮可能在屏幕底部或右下角"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-8a42001967fd",
+          "stepId": "step-2",
+          "stepOrder": 2,
+          "title": "预览挂载图片",
+          "source": "cowork-csv",
+          "stepText": "拍摄后点击确认",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      },
+      {
+        "instructionId": "c0282298-43cf-4163-81d7-ac7d326f8f94",
+        "expectation": "键盘收起，界面进入图片预览状态",
+        "preconditions": "拍照/选择图片已完成，图片已显示在输入框上方，键盘可能仍展开",
+        "actions": [
+          "点击输入框挂载的缩略图的左下角进入图片预览"
+        ],
+        "hints": [
+          "图片位于输入框上方区域",
+          "点击图片区域可触发收起键盘并进入预览"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-8a42001967fd",
+          "stepId": "step-3",
+          "stepOrder": 3,
+          "title": "预览挂载图片",
+          "source": "cowork-csv",
+          "stepText": "点击输入框上方的图片",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      },
+      {
+        "instructionId": "3b74ce25-f20f-4572-b01a-8458fc5d9f60",
+        "expectation": "图片缩小，退出预览模式",
+        "preconditions": "",
+        "actions": [
+          "点击图片区域，退出预览模式"
+        ],
+        "hints": []
+      }
+    ],
+    "compiledAt": "2026-07-23T09:20:28.702Z",
+    "sourceTag": "panel-auto-save"
+  },
+  "cowork-dd620a9525e8": {
+    "caseId": "cowork-dd620a9525e8",
+    "instructions": [
+      {
+        "instructionId": "5cb5978e-7581-4c2e-a410-ba7b94c9422b",
+        "expectation": "输入框内的图片缩略图及删除按钮均已消失，输入框恢复为空或仅保留占位提示文字",
+        "preconditions": "WPS AI 首页已打开，底部输入框内已显示一张已挂载的图片缩略图，缩略图上或旁边显示删除按钮（X 或垃圾桶图标）",
+        "actions": [
+          "找到底部输入框内的图片缩略图",
+          "点击该图片缩略图上的删除按钮（X 或关闭图标）"
+        ],
+        "hints": [
+          "删除按钮可能显示为 X、关闭图标或垃圾桶图标，位置在缩略图角落或叠加层上",
+          "若缩略图上未直接看到删除按钮，尝试长按缩略图呼出操作菜单后选择删除"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-dd620a9525e8",
+          "stepId": "step-1",
+          "stepOrder": 1,
+          "title": "删除已挂载图片",
+          "source": "cowork-csv",
+          "stepText": "在输入框图片缩略图点击【删除/X】",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      },
+      {
+        "instructionId": "a61228bd-d2ee-45d0-a227-f789efc63e7d",
+        "expectation": "输入框上方无图片显示，推荐功能位重新可见",
+        "preconditions": "WPS AI 首页底部输入框上方已挂载拍照图片，推荐功能位被隐藏",
+        "actions": [
+          "确认输入框上方的已挂载图片已被删除",
+          "确认推荐功能位已重新显示在输入框上方区域"
+        ],
+        "hints": [
+          "推荐功能位文案因设备/语言可能不同，以控件角色（功能入口/推荐位）为准",
+          "若图片未删除则判定为本步失败"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-dd620a9525e8",
+          "stepId": "step-2",
+          "stepOrder": 2,
+          "title": "删除已挂载图片",
+          "source": "cowork-csv",
+          "stepText": "观察坑位与输入区变化",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      }
+    ],
+    "reports": [
+      {
+        "ok": true,
+        "issues": [],
+        "draft": {
+          "preconditions": "WPS AI 首页已打开，底部输入框内已显示一张已挂载的图片缩略图，缩略图上或旁边显示删除按钮（X 或垃圾桶图标）",
+          "actions": [
+            "找到底部输入框内的图片缩略图",
+            "点击该图片缩略图上的删除按钮（X 或关闭图标）"
+          ],
+          "expectation": "输入框内的图片缩略图及删除按钮均已消失，输入框恢复为空或仅保留占位提示文字",
+          "hints": [
+            "删除按钮可能显示为 X、关闭图标或垃圾桶图标，位置在缩略图角落或叠加层上",
+            "若缩略图上未直接看到删除按钮，尝试长按缩略图呼出操作菜单后选择删除"
+          ],
+          "timeoutMs": 60000
+        }
+      },
+      {
+        "ok": true,
+        "issues": [],
+        "draft": {
+          "preconditions": "WPS AI 首页底部输入框上方已挂载拍照图片，推荐功能位被隐藏",
+          "actions": [
+            "确认输入框上方的已挂载图片已被删除",
+            "确认推荐功能位已重新显示在输入框上方区域"
+          ],
+          "expectation": "输入框上方无图片显示，推荐功能位重新可见",
+          "hints": [
+            "推荐功能位文案因设备/语言可能不同，以控件角色（功能入口/推荐位）为准",
+            "若图片未删除则判定为本步失败"
+          ],
+          "timeoutMs": 60000
+        }
+      }
+    ],
+    "compiledAt": "2026-07-23T08:27:40.516Z",
+    "sourceTag": "llm"
+  },
+  "cowork-b18d94393f3e": {
+    "caseId": "cowork-b18d94393f3e",
+    "instructions": [
+      {
+        "instructionId": "769c4321-39b9-4cb4-8b09-abe3fe6d0769",
+        "expectation": "页面中可见已挂载的拍照图片缩略图，且图片上方区域为空（无额外控件、提示文案或占位坑位）",
+        "preconditions": "已在WPS首页完成拍照并成功挂载图片，当前停留在WPS AI首页，底部有输入框及拍照按钮",
+        "actions": [
+          "在页面上找到已挂载的拍照图片缩略图控件并确认其可见",
+          "检查图片上方区域（坑位）无多余控件或占位元素显示"
+        ],
+        "hints": [
+          "确保底部输入框已经在拍照并且挂载有图片",
+          "若图片缩略图因滚动不可见，需在可视区域内查找",
+          "上方坑位指图片正上方紧邻的空白区域不应出现任何UI元素"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-b18d94393f3e",
+          "stepId": "step-2",
+          "stepOrder": 2,
+          "title": "WPS首页拍照挂载 → 进入WPS AI → 带图发送",
+          "source": "cowork-csv",
+          "stepText": "确认图片仍挂载且上方坑位不展示",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      },
+      {
+        "instructionId": "f61cb24c-a8d6-4a22-8fb8-319ee438727c",
+        "expectation": "输入框清空，已发送的文字和图片消息显示在对话区域中，WPS AI正在处理或已返回回复",
+        "preconditions": "已在WPS AI界面，且已有图片挂载在输入区域",
+        "actions": [
+          "点击底部输入框的中央，激活输入模式，并且输入“test”",
+          "点击发送按钮"
+        ],
+        "hints": [
+          "发送按钮通常位于输入框右侧，可能为纸飞机或箭头图标",
+          "发送后界面进入对话模式，显示已发送的图片和文字内容"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-b18d94393f3e",
+          "stepId": "step-3",
+          "stepOrder": 3,
+          "title": "WPS首页拍照挂载 → 进入WPS AI → 带图发送",
+          "source": "cowork-csv",
+          "stepText": "输入补充文字内容后点击【发送】",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      },
+      {
+        "instructionId": "2235a37e-e244-47e1-85b2-f0515778ec96",
+        "expectation": "对话页最近一条用户消息气泡中可见图片缩略图（图片随消息发送成功且可在对话页看到）",
+        "preconditions": "对话页已打开，底部有输入框，上方显示已发送的消息气泡",
+        "actions": [
+          "在对话消息区域查找最近一条用户消息气泡",
+          "确认该消息气泡内包含图片缩略图或图片占位元素"
+        ],
+        "hints": [
+          "图片可能以缩略图形式显示在消息气泡内或消息下方",
+          "若图片尚未加载完成，可等待图片加载后再核验",
+          "本步不要求点击图片预览，仅确认对话页可见图片"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-b18d94393f3e",
+          "stepId": "step-4",
+          "stepOrder": 4,
+          "title": "WPS首页拍照挂载 → 进入WPS AI → 带图发送",
+          "source": "cowork-csv",
+          "stepText": "在对话页核对用户消息含图片",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      }
+    ],
+    "compiledAt": "2026-07-23T08:53:13.325Z",
+    "sourceTag": "panel-auto-save"
+  },
+  "cowork-fce89773ac1f": {
+    "caseId": "cowork-fce89773ac1f",
+    "instructions": [
+      {
+        "instructionId": "d457fa76-897a-4ab6-a6b2-984fd8be2f73",
+        "expectation": "系统设置中WPS应用的麦克风权限状态为已禁止或关闭",
+        "preconditions": "用户已打开WPS应用，处于WPS AI首页",
+        "actions": [
+          "回到桌面，找到并长按WPS图标",
+          "进入应用详情",
+          "关闭录音权限"
+        ],
+        "hints": [
+          "不同Android设备设置路径可能不同，常见路径：设置 > 应用 > WPS > 权限 > 麦克风 > 禁止",
+          "部分设备可能在设置 > 隐私 > 权限管理器 > 麦克风 中查看",
+          "操作完成后建议返回WPS确认麦克风相关功能不可用"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-fce89773ac1f",
+          "stepId": "step-1",
+          "stepOrder": 1,
+          "title": "无麦克风权限时长按输入框",
+          "source": "cowork-csv",
+          "stepText": "系统设置关闭WPS麦克风权限",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      },
+      {
+        "instructionId": "2d4a2cf1-80b6-4f3e-8298-958f24b1badc",
+        "expectation": "输入框被长按后弹出上下文菜单或输入模式切换面板（如文本输入/语音输入切换选项），菜单中包含与输入方式相关的选项",
+        "preconditions": "已处于WPS AI首页，底部存在文本输入框，设备未授予麦克风权限",
+        "actions": [
+          "长按底部输入框"
+        ],
+        "hints": [
+          "长按输入框是触发语音输入切换的常见交互方式",
+          "因麦克风权限未授予，若弹出语音相关选项，点击后可能提示权限不足",
+          "长按位置应落在底部输入框区域内"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-fce89773ac1f",
+          "stepId": "step-2",
+          "stepOrder": 2,
+          "title": "无麦克风权限时长按输入框",
+          "source": "cowork-csv",
+          "stepText": "在WPS首页长按输入框",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      },
+      {
+        "instructionId": "ae74559c-5427-4ecf-b29e-5aebcf4df7de",
+        "expectation": "屏幕弹出麦克风权限引导弹窗，弹窗内含引导开启麦克风权限的说明文字及确认/授权按钮（按钮文案因设备/语言可能不同）",
+        "preconditions": "已处于WPS AI首页，底部输入框已激活为语音输入模式，设备未授予麦克风权限",
+        "actions": [
+          "长按底部输入框的语音输入按钮"
+        ],
+        "hints": [
+          "权限引导弹窗通常带有半透明遮罩层，阻止背景交互",
+          "若设备未限制麦克风权限，可能直接弹出系统权限请求而非应用内引导弹窗"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-fce89773ac1f",
+          "stepId": "step-3",
+          "stepOrder": 3,
+          "title": "无麦克风权限时长按输入框",
+          "source": "cowork-csv",
+          "stepText": "观察权限引导弹窗",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      }
+    ],
+    "compiledAt": "2026-07-23T09:31:16.919Z",
+    "sourceTag": "panel-auto-save"
+  },
+  "cowork-90b985edbd25": {
+    "caseId": "cowork-90b985edbd25",
+    "instructions": [
+      {
+        "instructionId": "6a2dc2b5-8bf1-47ae-8826-4fcbe41af0bb",
+        "expectation": "当前页面显示新建会话",
+        "preconditions": "用户已在 WPS AI 首页，前面的授权步骤已成功完成",
+        "actions": [
+          "当前已经在WPS AI首页，如果不在首页，点击底部输入框进入WPS AI 首页",
+          "点击左上角的气泡按钮，新建一个全新会话"
+        ],
+        "hints": [
+          "长按底部输入框是触发语音录入的入口",
+          "录音界面可能因设备/语言不同而文案有差异，但应存在录音状态反馈和停止/取消控件"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-90b985edbd25",
+          "stepId": "step-2",
+          "stepOrder": 2,
+          "title": "授权后再次长按",
+          "source": "cowork-csv",
+          "stepText": "返回首页长按输入框录音",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      },
+      {
+        "instructionId": "fff5c543-f81d-4898-90d1-bc031b16b511",
+        "expectation": "松开手后，对话流中有一条新的用户消息",
+        "preconditions": "",
+        "actions": [
+          "长按底部输入框 10s 以触发录音，如果当前是文字模式，点击“喇叭”图标切换到语言输入模式"
+        ],
+        "hints": []
+      }
+    ],
+    "compiledAt": "2026-07-23T09:36:24.585Z",
+    "sourceTag": "panel-auto-save"
+  },
+  "cowork-922d0ced510f": {
+    "caseId": "cowork-922d0ced510f",
+    "instructions": [
+      {
+        "instructionId": "ba04e319-5dd9-42c4-b9cb-4a9934bf2f47",
+        "expectation": "当前页面显示新建会话",
+        "preconditions": "WPS首页已加载，底部输入框可见",
+        "actions": [
+          "当前已经在WPS AI首页，如果不在首页，点击底部输入框进入WPS AI 首页",
+          "点击左上角的气泡按钮，新建一个全新会话"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-922d0ced510f",
+          "stepId": "step-1",
+          "stepOrder": 1,
+          "title": "长按输入框进入语音录入",
+          "source": "cowork-csv",
+          "stepText": "在WPS首页长按底部输入框",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      },
+      {
+        "instructionId": "da3c1cdb-3027-4577-b903-de39f329c5fb",
+        "expectation": "对话流中有新的用户消息",
+        "preconditions": "已处于语音录入模式，界面显示录音中状态（如麦克风图标动画、波形或计时器）",
+        "actions": [
+          "长按底部输入框 10s 以触发录音，如果当前是文字模式，点击“喇叭”图标切换到语言输入模式"
+        ],
+        "hints": [
+          "录音时长应在2-3秒范围内，过短或过长可能影响识别效果"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-922d0ced510f",
+          "stepId": "step-2",
+          "stepOrder": 2,
+          "title": "长按输入框进入语音录入",
+          "source": "cowork-csv",
+          "stepText": "说话2-3秒",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      }
+    ],
+    "compiledAt": "2026-07-23T09:39:37.319Z",
+    "sourceTag": "panel-auto-save"
+  },
+  "cowork-ec8253b6ecde": {
+    "caseId": "cowork-ec8253b6ecde",
+    "instructions": [
+      {
+        "instructionId": "c23faba6-41de-4e28-ab07-e9350014c54d",
+        "expectation": "长按输入框后弹出上下文菜单或功能面板（如语音录入、复制、粘贴等选项之一可见）",
+        "preconditions": "已处于WPS AI首页，底部可见输入框",
+        "actions": [
+          "当前已经在WPS AI首页，如果不在首页，点击底部输入框进入WPS AI 首页",
+          "点击左上角的气泡按钮，新建一个全新会话",
+          "长按底部输入框5s后上滑取消，如果当前是文字模式，点击“喇叭”图标切换到语言输入模式"
+        ],
+        "hints": [
+          "如果当前是文字模式，点击“喇叭”图标切换到语言输入模式",
+          "弹出的菜单/面板内容因系统版本可能不同，只需确认有菜单出现即可"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-ec8253b6ecde",
+          "stepId": "step-2",
+          "stepOrder": 2,
+          "title": "录入后取消",
+          "source": "cowork-csv",
+          "stepText": "长按底部输入框",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      },
+      {
+        "instructionId": "e3346415-140a-4f1d-a501-a171d1a48d77",
+        "expectation": "对话流中没有用户消息",
+        "preconditions": "已进入语音录入界面，正在录音中，录音时长约2-3秒",
+        "actions": [
+          "观察对话流消息"
+        ],
+        "hints": [
+          "上滑是语音录入常见的取消手势",
+          "红色提示框和取消文案是确认进入取消状态的关键视觉信号"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-ec8253b6ecde",
+          "stepId": "step-3",
+          "stepOrder": 3,
+          "title": "录入后取消",
+          "source": "cowork-csv",
+          "stepText": "录入2-3秒后上滑",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      }
+    ],
+    "compiledAt": "2026-07-23T09:40:56.597Z",
+    "sourceTag": "panel-auto-save"
+  },
+  "cowork-37e92e4497d8": {
+    "caseId": "cowork-37e92e4497d8",
+    "instructions": [
+      {
+        "instructionId": "43ce539e-45b2-406c-86f7-729b062c84e1",
+        "expectation": "界面进入语音录制状态，显示录音动画或波形指示器，并出现取消/停止录音的控件",
+        "preconditions": "WPS AI 首页已打开，底部输入框已展开，当前处于文字输入模式，输入框最右侧可见语音/文字切换按钮",
+        "actions": [
+          "长按输入框最右侧的语音按钮进入录音模式"
+        ],
+        "hints": [
+          "长按后需保持按住状态直到录音界面出现；本步为第 1/2 步，后续还有操作"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-37e92e4497d8",
+          "stepId": "step-1",
+          "stepOrder": 1,
+          "title": "语音上移取消区松手",
+          "source": "cowork-csv",
+          "stepText": "长按【语音】录音",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      },
+      {
+        "instructionId": "a479c4d7-5267-4b76-b71b-be48bcc25404",
+        "expectation": "页面回到语音输入初始状态，未产生任何语音消息，界面无录音中或录音结束的提示弹窗",
+        "preconditions": "已进入语音输入模式，底部存在语音输入按钮，当前未开始录制语音",
+        "actions": [
+          "在底部语音输入按钮上长按触发语音录制",
+          "手指沿语音按钮区域向上滑动至松开取消区域",
+          "松开手指取消语音录制"
+        ],
+        "hints": [
+          "松开取消区域通常位于语音按钮上方，可能有文字提示如'松开取消'或'取消发送'，文案因设备/语言可能不同",
+          "若界面无明显取消区域提示，可在语音按钮上滑约屏幕高度20%-30%处松手"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-37e92e4497d8",
+          "stepId": "step-2",
+          "stepOrder": 2,
+          "title": "语音上移取消区松手",
+          "source": "cowork-csv",
+          "stepText": "上滑至【松开取消】区域松手",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      }
+    ],
+    "reports": [
+      {
+        "ok": true,
+        "issues": [],
+        "draft": {
+          "preconditions": "WPS AI 首页已打开，底部输入框已展开，当前处于文字输入模式，输入框最右侧可见语音/文字切换按钮",
+          "actions": [
+            "长按输入框最右侧的语音按钮进入录音模式"
+          ],
+          "expectation": "界面进入语音录制状态，显示录音动画或波形指示器，并出现取消/停止录音的控件",
+          "hints": [
+            "长按后需保持按住状态直到录音界面出现；本步为第 1/2 步，后续还有操作"
+          ],
+          "timeoutMs": 60000
+        }
+      },
+      {
+        "ok": true,
+        "issues": [],
+        "draft": {
+          "preconditions": "已进入语音输入模式，底部存在语音输入按钮，当前未开始录制语音",
+          "actions": [
+            "在底部语音输入按钮上长按触发语音录制",
+            "手指沿语音按钮区域向上滑动至松开取消区域",
+            "松开手指取消语音录制"
+          ],
+          "expectation": "页面回到语音输入初始状态，未产生任何语音消息，界面无录音中或录音结束的提示弹窗",
+          "hints": [
+            "松开取消区域通常位于语音按钮上方，可能有文字提示如'松开取消'或'取消发送'，文案因设备/语言可能不同",
+            "若界面无明显取消区域提示，可在语音按钮上滑约屏幕高度20%-30%处松手"
+          ],
+          "timeoutMs": 60000
+        }
+      }
+    ],
+    "compiledAt": "2026-07-23T09:29:29.137Z",
+    "sourceTag": "llm"
+  },
+  "cowork-4ab3423db00e": {
+    "caseId": "cowork-4ab3423db00e",
+    "instructions": [
+      {
+        "instructionId": "d95b25ef-1752-499d-8404-1b0cb8340579",
+        "expectation": "松开后界面进入语音播放/回放状态，可见音频波形或播放控件（如播放/暂停按钮、进度条等）",
+        "preconditions": "WPS AI 首页已打开，底部输入框可见且处于文字输入模式，输入框最右侧的语音按钮可见",
+        "actions": [
+          "当前已经在WPS AI首页，如果不在首页，点击底部输入框进入WPS AI 首页",
+          "点击左上角的气泡按钮，新建一个全新会话",
+          "长按底部输入框最右侧的语音按钮，保持约 5 秒后松手"
+        ],
+        "hints": [
+          "如果当前是文字模式，点击“喇叭”图标切换到语言输入模式",
+          "若录音时长不足 2 秒可能无法保存，需确保长按时长足够"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-4ab3423db00e",
+          "stepId": "step-1",
+          "stepOrder": 1,
+          "title": "语音正常松手",
+          "source": "cowork-csv",
+          "stepText": "长按【语音】录音2秒",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      },
+      {
+        "instructionId": "bb1b035e-c1b5-491d-b0ce-9a27d85a281d",
+        "expectation": "语音消息被自动发送，界面显示正在生成内容或已生成内容",
+        "preconditions": "WPS AI首页已打开，底部输入框已激活，语音输入模式已启用，正在录音中",
+        "actions": [
+          "在发送提示区松手"
+        ],
+        "hints": [
+          "松手后应自动发送语音并转文字，随后触发内容生成",
+          "文案因设备/语言可能不同"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-4ab3423db00e",
+          "stepId": "step-2",
+          "stepOrder": 2,
+          "title": "语音正常松手",
+          "source": "cowork-csv",
+          "stepText": "在发送提示区松手",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      }
+    ],
+    "compiledAt": "2026-07-23T09:36:57.618Z",
+    "sourceTag": "panel-auto-save"
+  },
+  "cowork-855dbd7d8cdd": {
+    "caseId": "cowork-855dbd7d8cdd",
+    "instructions": [
+      {
+        "instructionId": "a3179402-07f4-46db-ac38-d88684985167",
+        "expectation": "底部输入框获得焦点，键盘或输入辅助控件出现",
+        "preconditions": "已在 WPS AI 首页",
+        "actions": [
+          "点击底部输入框"
+        ],
+        "hints": [
+          "目标状态空间仅列出'点击底部输入框'为合法转移，发送消息为后续步骤"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-855dbd7d8cdd",
+          "stepId": "step-1",
+          "stepOrder": 1,
+          "title": "进入任务对话页",
+          "source": "cowork-csv",
+          "stepText": "从首页发送消息进入对话页",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      },
+      {
+        "instructionId": "9cf397f1-d1af-4b75-9bb7-dbc263b42cdd",
+        "expectation": "页面可观察到顶部区域、对话流区域、底部输入框区域三者同时存在，布局结构完整",
+        "preconditions": "已处于任务对话页，顶部、对话流、底部输入框三区布局已加载完成",
+        "actions": [
+          "确认页面存在顶部区域、中间对话流区域、底部输入框区域三个区域结构"
+        ],
+        "hints": [
+          "本步为布局确认，非功能操作",
+          "后续步骤可进一步核验各区域内具体控件内容"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-855dbd7d8cdd",
+          "stepId": "step-2",
+          "stepOrder": 2,
+          "title": "进入任务对话页",
+          "source": "cowork-csv",
+          "stepText": "确认顶部/对话流/底部输入框三区",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      }
+    ],
+    "reports": [
+      {
+        "ok": true,
+        "issues": [],
+        "draft": {
+          "preconditions": "已在 WPS AI 首页",
+          "actions": [
+            "点击底部输入框"
+          ],
+          "expectation": "底部输入框获得焦点，键盘或输入辅助控件出现",
+          "hints": [
+            "目标状态空间仅列出'点击底部输入框'为合法转移，发送消息为后续步骤"
+          ],
+          "timeoutMs": 60000
+        }
+      },
+      {
+        "ok": true,
+        "issues": [],
+        "draft": {
+          "preconditions": "已处于任务对话页，顶部、对话流、底部输入框三区布局已加载完成",
+          "actions": [
+            "确认页面存在顶部区域、中间对话流区域、底部输入框区域三个区域结构"
+          ],
+          "expectation": "页面可观察到顶部区域、对话流区域、底部输入框区域三者同时存在，布局结构完整",
+          "hints": [
+            "本步为布局确认，非功能操作",
+            "后续步骤可进一步核验各区域内具体控件内容"
+          ],
+          "timeoutMs": 60000
+        }
+      }
+    ],
+    "compiledAt": "2026-07-23T09:30:16.607Z",
+    "sourceTag": "llm"
   }
 }
