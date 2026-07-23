@@ -12,8 +12,10 @@
   },
   "dependencies": {
     "@midscene/core": "file:../../vendor/midscene/core",
+    "@midscene/shared": "file:../../vendor/midscene/shared",
     "@mtp/domain-agent": "0.0.0",
     "@mtp/domain-case": "0.0.0",
+    "@mtp/domain-goal-space": "0.0.0",
     "dotenv": "^16.3.1"
   },
   "devDependencies": {

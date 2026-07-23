@@ -6,6 +6,10 @@
     "outDir": "dist",
     "noEmit": false
   },
-  "references": [{ "path": "../../packages/domain-case" }],
+  "references": [
+    { "path": "../../packages/domain-case" },
+    { "path": "../../packages/domain-goal-space" },
+    { "path": "../../packages/domain-agent" }
+  ],
   "include": ["src"]
 }

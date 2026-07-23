@@ -23,6 +23,7 @@ import {
   createLlmInstructionCompiler,
 } from '@mtp/domain-case';
 import { createOpenCodeHttpClient } from '@mtp/domain-agent';
+import { createGoalSpaceHttpClient } from '@mtp/domain-goal-space';
 import {
   createCoworkCsvAdapter,
   type CreateCoworkCsvAdapterOptions,
@@ -89,6 +90,18 @@ async function main() {
     password: process.env.OPENCODE_SERVER_PASSWORD,
   });
   const llmCompiler = createLlmInstructionCompiler({ client: openCode });
+  const goalSpace =
+    process.env.COWORK_GOAL_SPACE === '0'
+      ? undefined
+      : createGoalSpaceHttpClient({
+          baseUrl: process.env.GOAL_SPACE_URL ?? 'http://127.0.0.1:4104',
+        });
+  const goalSpaceRef = process.env.GOAL_SPACE_ID
+    ? {
+        spaceId: process.env.GOAL_SPACE_ID,
+        version: process.env.GOAL_SPACE_VERSION || undefined,
+      }
+    : undefined;
 
   const server = createServer(async (req, res) => {
     try {
@@ -188,6 +201,8 @@ async function main() {
               const bundle = await compileCoworkCase(detail, llmCompiler, {
                 onProgress: writeEvent,
                 onPartial: (partial) => adapter.saveCompiled(partial),
+                goalSpace,
+                goalSpaceRef,
               });
               await adapter.saveCompiled(bundle);
             } catch (error) {
@@ -213,6 +228,8 @@ async function main() {
 
           const bundle = await compileCoworkCase(detail, llmCompiler, {
             onPartial: (partial) => adapter.saveCompiled(partial),
+            goalSpace,
+            goalSpaceRef,
           });
           await adapter.saveCompiled(bundle);
           sendJson(res, 200, bundle);
