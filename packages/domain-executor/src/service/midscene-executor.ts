@@ -270,28 +270,61 @@ export class MidsceneExecutor implements ExecutorPort {
         error: { code: 'INVALID_ARGS', message: 'prompt is required' },
       };
     }
+    const timeoutMsRaw = request.timeoutMs;
+    const timeoutMs =
+      typeof timeoutMsRaw === 'number' && Number.isFinite(timeoutMsRaw)
+        ? Math.max(0, Math.floor(timeoutMsRaw))
+        : Number(process.env.MIDSCENE_AI_ACT_TIMEOUT_MS ?? 15_000);
+    const ac = new AbortController();
     try {
       // Agent 控机面板已通过 UniversalPlayground → /execute 推流。
       // freeform 回退必须直调 agent.aiAct，避免再占 Playground currentTaskId
       //（否则会出现 UI 无任务、却 409 Another task is already running）。
-      const result = await this.agent.aiAct(prompt, {
-        maxActions: request.maxActions,
-      });
-      return {
-        ok: true,
-        durationMs: Date.now() - startedAt,
-        report: { prompt, result: result ?? null },
-      };
+      const timer =
+        timeoutMs > 0
+          ? setTimeout(() => {
+              ac.abort(`timeout after ${timeoutMs}ms`);
+            }, timeoutMs)
+          : null;
+      try {
+        const result = await this.agent.aiAct(prompt, {
+          maxActions: request.maxActions,
+          abortSignal: ac.signal,
+        });
+        return {
+          ok: true,
+          durationMs: Date.now() - startedAt,
+          report: { prompt, result: result ?? null },
+        };
+      } finally {
+        if (timer) clearTimeout(timer);
+      }
     } catch (error) {
       const err = error as {
         message?: string;
+        name?: string;
+        reason?: unknown;
         rawResponse?: unknown;
         rawChoiceMessage?: unknown;
         cause?: unknown;
       };
+      const rawMessage = err?.message ?? String(error);
+      const abortReason =
+        typeof ac.signal.reason === 'string'
+          ? ac.signal.reason
+          : ac.signal.reason != null
+            ? String(ac.signal.reason)
+            : '';
+      const timedOut =
+        ac.signal.aborted ||
+        /timeout/i.test(`${rawMessage} ${abortReason}`);
+      const timeoutLabel =
+        /timeout/i.test(abortReason) ? abortReason : `timeout after ${timeoutMs}ms`;
       console.error('[midscene-executor] freeformExecute failed:', {
         prompt,
-        message: err?.message ?? String(error),
+        message: rawMessage,
+        timedOut,
+        abortReason: abortReason || undefined,
         rawResponse: err?.rawResponse,
         rawChoiceMessage: err?.rawChoiceMessage,
         cause:
@@ -305,8 +338,12 @@ export class MidsceneExecutor implements ExecutorPort {
         ok: false,
         durationMs: Date.now() - startedAt,
         error: {
-          code: 'FREEFORM_FAILED',
-          message: error instanceof Error ? error.message : String(error),
+          code: timedOut ? 'FREEFORM_TIMEOUT' : 'FREEFORM_FAILED',
+          message: timedOut
+            ? /timeout/i.test(rawMessage)
+              ? rawMessage
+              : timeoutLabel
+            : rawMessage,
         },
       };
     }
