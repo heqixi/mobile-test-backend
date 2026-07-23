@@ -139,6 +139,21 @@ export async function createAndroidExecutor(
 
   /** Playground / freeform 共用同一 Agent；abort 时打断当前 aiAct */
   let actAbort: AbortController | null = null;
+  /**
+   * 下一次 aiAct 的 maxActions 覆盖：
+   * - null sentinel 外层：未预置 → 用默认
+   * - { value: number } → 限制
+   * - { value: undefined } → 本次明确不限制
+   */
+  let armedMaxActions: { value: number | undefined } | null = null;
+  const armNextAiActMaxActions = (maxActions: number | null) => {
+    armedMaxActions = {
+      value:
+        typeof maxActions === 'number' && Number.isFinite(maxActions)
+          ? Math.max(0, Math.floor(maxActions))
+          : undefined,
+    };
+  };
   const rawAiAct = agent.aiAct.bind(agent);
   agent.aiAct = async (prompt, opt) => {
     actAbort?.abort();
@@ -152,11 +167,21 @@ export async function createAndroidExecutor(
       external?.addEventListener('abort', onExternal, { once: true });
     }
     try {
-      // 单次 opt.maxActions 优先；否则用 executor 默认（env / 构造参数）
-      const maxActions =
-        typeof opt?.maxActions === 'number' && Number.isFinite(opt.maxActions)
-          ? Math.max(0, Math.floor(opt.maxActions))
-          : defaultMaxActions;
+      // 单次 opt.maxActions 优先；其次 arm 预置；否则 executor 默认。
+      // 无论走哪条分支都消费 arm，避免泄漏到下一次无关 aiAct。
+      const armed = armedMaxActions;
+      armedMaxActions = null;
+      let maxActions: number | undefined;
+      if (
+        typeof opt?.maxActions === 'number' &&
+        Number.isFinite(opt.maxActions)
+      ) {
+        maxActions = Math.max(0, Math.floor(opt.maxActions));
+      } else if (armed) {
+        maxActions = armed.value;
+      } else {
+        maxActions = defaultMaxActions;
+      }
       return await rawAiAct(prompt, {
         ...opt,
         ...(maxActions !== undefined ? { maxActions } : {}),
@@ -196,6 +221,7 @@ export async function createAndroidExecutor(
       return shot.base64;
     },
     onAbortAct: abortCurrentAct,
+    onArmNextAiActMaxActions: armNextAiActMaxActions,
     onDestroy: async () => {
       abortCurrentAct();
       await agent.destroy?.().catch(() => undefined);

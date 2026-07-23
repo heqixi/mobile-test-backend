@@ -65,6 +65,12 @@ export const executorServiceRouteTable: RouteDescriptor[] = [
   },
   {
     method: 'POST',
+    path: AepHttpRoutes.armAiAct,
+    channel: 'aep',
+    summary: '预置下一次 aiAct 的 maxActions',
+  },
+  {
+    method: 'POST',
     path: AepHttpRoutes.locate,
     channel: 'aep',
     summary: '自然语言定位元素（aiLocate）',
@@ -165,6 +171,8 @@ export function createExecutorHttpApi(executor: ExecutorPort): ExecutorHttpApi {
         return aep.bindDevice(body);
       case `POST ${AepHttpRoutes.abort}`:
         return aep.abort(body as never);
+      case `POST ${AepHttpRoutes.armAiAct}`:
+        return aep.armAiAct(body as never);
       case `POST ${AepHttpRoutes.locate}`:
         return aep.locate(body);
       case `POST ${AepHttpRoutes.annotate}`:

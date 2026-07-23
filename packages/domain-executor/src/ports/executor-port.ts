@@ -99,6 +99,12 @@ export interface ExecutorPort {
   /** 中止当前正在执行的操作（若有） */
   abort(): Promise<{ aborted: boolean }>;
 
+  /**
+   * 预置下一次 aiAct（含 Playground /execute）的 maxActions。
+   * `null` = 本次明确不限制（覆盖默认）；用后即清。
+   */
+  armNextAiActMaxActions(maxActions: number | null): Promise<{ ok: boolean }>;
+
   /** 释放设备、Agent、侧车资源 */
   destroy(): Promise<void>;
 }

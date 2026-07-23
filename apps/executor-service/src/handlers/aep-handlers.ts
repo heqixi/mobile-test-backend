@@ -78,6 +78,16 @@ export function createAepHttpHandlers(executor: ExecutorPort): AepHttpHandlers {
       return ok(await executor.abort());
     },
 
+    async armAiAct(body) {
+      const req = (body ?? {}) as { maxActions?: number | null };
+      const raw = req.maxActions;
+      const maxActions =
+        typeof raw === 'number' && Number.isFinite(raw)
+          ? Math.max(0, Math.floor(raw))
+          : null;
+      return ok(await executor.armNextAiActMaxActions(maxActions));
+    },
+
     async locate(body) {
       const req = body as Partial<LocateRequest>;
       if (!req.phrase?.trim()) {

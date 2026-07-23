@@ -66,6 +66,8 @@ export interface MidsceneExecutorDeps {
   getScreenshotBase64: () => Promise<string>;
   /** 中止当前 aiAct（含 Playground / freeform 共用同一 Agent） */
   onAbortAct?: () => void;
+  /** 预置下一次 aiAct 的 maxActions（null=不限制） */
+  onArmNextAiActMaxActions?: (maxActions: number | null) => void;
   /** 释放底层 device / agent（不含 sidecar，由本类统一 close） */
   onDestroy?: () => Promise<void>;
 }
@@ -80,6 +82,9 @@ export class MidsceneExecutor implements ExecutorPort {
   private sidecar: EmbeddedSidecarHandle | null;
   private readonly getScreenshotBase64: () => Promise<string>;
   private readonly onAbortAct?: () => void;
+  private readonly onArmNextAiActMaxActions?: (
+    maxActions: number | null,
+  ) => void;
   private readonly onDestroy?: () => Promise<void>;
   private destroyed = false;
 
@@ -90,6 +95,7 @@ export class MidsceneExecutor implements ExecutorPort {
     this.sidecar = deps.sidecar;
     this.getScreenshotBase64 = deps.getScreenshotBase64;
     this.onAbortAct = deps.onAbortAct;
+    this.onArmNextAiActMaxActions = deps.onArmNextAiActMaxActions;
     this.onDestroy = deps.onDestroy;
   }
 
@@ -274,7 +280,7 @@ export class MidsceneExecutor implements ExecutorPort {
     const timeoutMs =
       typeof timeoutMsRaw === 'number' && Number.isFinite(timeoutMsRaw)
         ? Math.max(0, Math.floor(timeoutMsRaw))
-        : Number(process.env.MIDSCENE_AI_ACT_TIMEOUT_MS ?? 15_000);
+        : Number(process.env.MIDSCENE_AI_ACT_TIMEOUT_MS ?? 120_000);
     const ac = new AbortController();
     try {
       // Agent 控机面板已通过 UniversalPlayground → /execute 推流。
@@ -456,6 +462,13 @@ export class MidsceneExecutor implements ExecutorPort {
   async abort(): Promise<{ aborted: boolean }> {
     this.onAbortAct?.();
     return { aborted: true };
+  }
+
+  async armNextAiActMaxActions(
+    maxActions: number | null,
+  ): Promise<{ ok: boolean }> {
+    this.onArmNextAiActMaxActions?.(maxActions);
+    return { ok: true };
   }
 
   async destroy(): Promise<void> {

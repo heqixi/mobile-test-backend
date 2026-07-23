@@ -28,6 +28,8 @@ export const AepHttpRoutes = {
   invokeTool: '/aep/v0.2/invoke-tool',
   bindDevice: '/aep/v0.2/bind-device',
   abort: '/aep/v0.2/abort',
+  /** 预置下一次 aiAct 的 maxActions（Playground / freeform 共用） */
+  armAiAct: '/aep/v0.2/arm-ai-act',
   health: '/aep/v0.2/health',
   locate: '/aep/v0.2/locate',
   annotate: '/aep/v0.2/annotate',
@@ -52,6 +54,14 @@ export interface AbortHttpResponse {
   aborted: boolean;
 }
 
+export interface ArmAiActHttpRequest {
+  /** number=限制；null/省略=本次不限制 */
+  maxActions?: number | null;
+}
+export interface ArmAiActHttpResponse {
+  ok: boolean;
+}
+
 export type AepHealthHttpResponse = DeviceHealth;
 
 export type AepRequestEnvelope<T extends string, P> = AepEnvelope<T, P>;
@@ -64,6 +74,7 @@ export interface AepHttpHandlers {
   invokeTool(body: unknown): Promise<HttpResult>;
   bindDevice(body: unknown): Promise<HttpResult>;
   abort(body?: AbortHttpRequest): Promise<HttpResult>;
+  armAiAct(body?: ArmAiActHttpRequest): Promise<HttpResult>;
   health(): Promise<HttpResult>;
   locate(body: unknown): Promise<HttpResult>;
   annotate(body: unknown): Promise<HttpResult>;
