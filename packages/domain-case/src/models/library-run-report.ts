@@ -82,6 +82,12 @@ export interface MidsceneReportActionDump {
 export interface LibraryInstructionRunSummary {
   instructionId: string;
   label?: string;
+  /** Instruction.actions 原文 */
+  action?: string;
+  /** Instruction.expectation 原文 */
+  expectation?: string;
+  /** 实际发给 Executor / Midscene 的自然语言命令（可多条） */
+  executorCommands?: string[];
   satisfied: boolean;
   status: string;
   reason?: string;
@@ -134,6 +140,8 @@ export interface LibraryRunReport {
   htmlPath?: string;
   /** 合并后的 dump JSON 路径（可选） */
   dumpPath?: string;
+  /** Session 自包含产物目录（整夹可拷贝） */
+  artifactsPath?: string;
   cases: LibraryCaseRunResult[];
   summary: LibraryRunReportSummary;
   /** 已回写 CSV 的时间 */

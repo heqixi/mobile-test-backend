@@ -262,6 +262,7 @@ export function createCaseHttpHandlers(deps: {
           cases?: unknown;
           reportId?: string;
           createdAt?: string;
+          sessionId?: string;
         };
         if (!Array.isArray(input.cases)) {
           return fail(400, {
@@ -277,6 +278,7 @@ export function createCaseHttpHandlers(deps: {
             cases: input.cases as never,
             reportId: input.reportId,
             createdAt: input.createdAt,
+            sessionId: input.sessionId,
           }),
           201,
         );

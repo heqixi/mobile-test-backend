@@ -85,6 +85,7 @@ export interface CaseDataSourcePort {
     cases: LibraryCaseRunResult[];
     reportId?: string;
     createdAt?: string;
+    sessionId?: string;
   }): Promise<LibraryRunReport>;
 
   /** 将报告结果回写到业务源（如 CSV「测试结果」） */

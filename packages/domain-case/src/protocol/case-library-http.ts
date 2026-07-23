@@ -17,6 +17,12 @@ import type {
   LibraryRunReportSummaryItem,
   LibraryRunReportWritebackResponse,
 } from '../models/library-run-report.js';
+import type {
+  CreateLibraryRunSessionInput,
+  LibraryRunSession,
+  LibraryRunSessionSummaryItem,
+  PatchLibraryRunSessionInput,
+} from '../models/library-run-session.js';
 
 /** 用例库 REST 路径 */
 export const caseLibraryPaths = {
@@ -43,9 +49,17 @@ export const caseLibraryPaths = {
     `/api/library/reports/${encodeURIComponent(reportId)}/writeback`,
   reportHtml: (reportId: string) =>
     `/api/library/reports/${encodeURIComponent(reportId)}/html`,
+  /** 依次运行 Session */
+  runSessions: '/api/library/run-sessions',
+  runSession: (sessionId: string) =>
+    `/api/library/run-sessions/${encodeURIComponent(sessionId)}`,
+  runSessionArtifacts: (sessionId: string) =>
+    `/api/library/run-sessions/${encodeURIComponent(sessionId)}/artifacts/`,
+  runSessionArtifact: (sessionId: string, fileName: string) =>
+    `/api/library/run-sessions/${encodeURIComponent(sessionId)}/artifacts/${encodeURIComponent(fileName)}`,
 } as const;
 
-/** 路由匹配模板（`:caseId` / `:reportId` 占位） */
+/** 路由匹配模板（`:caseId` / `:reportId` / `:sessionId` 占位） */
 export const caseLibraryRoutePatterns = {
   caseDetail: '/api/library/cases/:caseId',
   outline: '/api/library/cases/:caseId/outline',
@@ -54,6 +68,10 @@ export const caseLibraryRoutePatterns = {
   reportDetail: '/api/library/reports/:reportId',
   reportWriteback: '/api/library/reports/:reportId/writeback',
   reportHtml: '/api/library/reports/:reportId/html',
+  runSessionDetail: '/api/library/run-sessions/:sessionId',
+  runSessionArtifacts: '/api/library/run-sessions/:sessionId/artifacts',
+  runSessionArtifactFile:
+    '/api/library/run-sessions/:sessionId/artifacts/:fileName',
 } as const;
 
 export interface CaseLibraryHealthResponse {
@@ -85,3 +103,10 @@ export type CaseLibraryReportResponse = LibraryRunReport;
 
 export type CaseLibraryReportWritebackResponse =
   LibraryRunReportWritebackResponse;
+
+export type CaseLibraryRunSessionListResponse = LibraryRunSessionSummaryItem[];
+export type CaseLibraryRunSessionResponse = LibraryRunSession;
+export type {
+  CreateLibraryRunSessionInput,
+  PatchLibraryRunSessionInput,
+} from '../models/library-run-session.js';

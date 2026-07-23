@@ -11,6 +11,7 @@ export * from './models/instruction-draft.js';
 export * from './models/compile-report.js';
 export * from './models/connected-case.js';
 export * from './models/library-run-report.js';
+export * from './models/library-run-session.js';
 export * from './models/compile-progress.js';
 export * from './ports/instruction-compiler-port.js';
 export * from './ports/llm-instruction-compiler-port.js';

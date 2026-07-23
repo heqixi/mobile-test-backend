@@ -233,6 +233,7 @@ export function createRemoteCaseDataSource(
       cases: LibraryCaseRunResult[];
       reportId?: string;
       createdAt?: string;
+      sessionId?: string;
     }) {
       return post<LibraryRunReport>(caseLibraryPaths.reports, input);
     },

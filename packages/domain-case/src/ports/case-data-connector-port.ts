@@ -84,6 +84,7 @@ export interface CaseDataConnectorPort {
     cases: LibraryCaseRunResult[];
     reportId?: string;
     createdAt?: string;
+    sessionId?: string;
   }): Promise<LibraryRunReport>;
 
   writebackRunReport(
