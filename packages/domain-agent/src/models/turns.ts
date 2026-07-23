@@ -8,6 +8,7 @@
  */
 
 import type { ISO8601, OpaqueJson, UUID } from '@mtp/shared-kernel';
+import type { MidsceneActionKind } from './midscene-action-kind.js';
 
 /**
  * 单次工具调用（PlanTurn 选中 act/recovery 时的信封项）。
@@ -34,9 +35,15 @@ export type PlanStrategy = 'act' | 'recovery' | 'pass' | 'fail' | 'illegal';
  * LLM Plan 相位输出信封。
  *
  * ```json
- * { "strategy": "act"|"recovery"|"pass"|"fail", "command"?: string, "evidence": string }
+ * {
+ *   "strategy": "act"|"recovery"|"pass"|"fail",
+ *   "command"?: string,
+ *   "actionKind"?: MidsceneActionKind,
+ *   "evidence": string
+ * }
  * ```
  * `evidence` 同时承载事实与归因（不再另设 reason）。
+ * act/recovery 须带 `actionKind`（Midscene 事件分类）；点击类会限 maxActions=1。
  */
 export interface PlanTurn {
   turnId: UUID;
@@ -46,6 +53,8 @@ export interface PlanTurn {
   /** act/recovery 时规范为 act_nl toolCall */
   toolCalls: ToolCall[];
   command?: string;
+  /** Midscene actionSpace 事件分类（act/recovery） */
+  actionKind?: MidsceneActionKind;
   evidence: string;
 }
 

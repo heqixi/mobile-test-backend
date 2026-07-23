@@ -62,12 +62,34 @@ You have exactly ONE tool for acting on the device:
 
 Rules for Midscene commands:
 1. Describe visible UI targets using exact labels/positions from actions (or hints) when provided.
-2. One atomic action per command (prefer one click / one type / one swipe).
+2. Prefer one intent per command; classify it with actionKind (below).
 3. Do NOT invent tools other than act_nl.
 4. command MUST be a FULL natural-language sentence that names the UI target.
    - BAD (rejected): "tap", "click", "swipe", "Tab"
    - GOOD: "点击底部输入框右侧的相机图标按钮"
    - NEVER put only an action verb in command; always include what/where to act.
+5. Typing into a field: set actionKind="Input" and write ONE command that covers focus+type
+   (e.g. "在底部输入框输入你好"). Do NOT split into Tap then Input yourself.
+6. Multiline text: put the exact lines in the command with the word 换行 / newline between them,
+   e.g. "在底部输入框依次输入三行（中间换行）：第一行测试内容 / 第二行测试内容 / 第三行测试内容".
+   Prefer short, concrete text; avoid restating the whole test case narrative.
+`.trim();
+
+export const MIDSCENE_ACTION_KIND_GUIDE = `
+## actionKind (MANDATORY when strategy is act or recovery)
+
+Classify the command as exactly ONE Midscene Android action name:
+
+Click family (single device action; executor caps at 1 midscene step):
+- Tap | DoubleClick | RightClick | LongPress
+
+Non-click (may need multiple midscene steps, e.g. focus field then type — NOT capped):
+- Input | ClearInput | KeyboardPress | CursorMove
+- Scroll | Swipe | Pinch | PullGesture | DragAndDrop | Hover
+- AndroidBackButton | AndroidHomeButton | AndroidRecentAppsButton
+- Launch | Terminate | RunAdbShell | Sleep
+
+Pick the closest match to what the command primarily does.
 `.trim();
 
 export const PLAN_STRATEGY_GUIDE = `
@@ -80,12 +102,12 @@ Business 2×2 (pick exactly ONE):
 | On track / undecided | strategy="act"     | strategy="pass"          |
 | Off track / disproved | strategy="recovery"| strategy="fail"         |
 
-| strategy   | when | command |
-|------------|------|---------|
-| act        | Expectation still undecided; take one step toward it via actions | required |
-| recovery   | Last step went wrong / last_tool failed; correct with one action | required |
-| pass       | You can AFFIRM expectation IS satisfied on CURRENT | omit |
-| fail       | You can AFFIRM expectation is NOT met or is contradicted | omit |
+| strategy   | when | command | actionKind |
+|------------|------|---------|------------|
+| act        | Expectation still undecided; take one step toward it via actions | required | required |
+| recovery   | Last step went wrong / last_tool failed; correct with one action | required | required |
+| pass       | You can AFFIRM expectation IS satisfied on CURRENT | omit | omit |
+| fail       | You can AFFIRM expectation is NOT met or is contradicted | omit | omit |
 
 Decision order:
 1. If you can affirm expectation IS met → strategy="pass".
@@ -105,10 +127,11 @@ export const JSON_EVIDENCE_RULES = `
 ## Output format (MANDATORY)
 
 1. Respond with ONLY one JSON object. No markdown fences, no prose outside JSON.
-2. Schema: {"strategy":"act"|"recovery"|"pass"|"fail","command"?,"evidence": string}
-3. "evidence" is REQUIRED: cite screenshot / last_tool facts AND why you chose this strategy.
+2. Schema: {"strategy":"act"|"recovery"|"pass"|"fail","command"?,"actionKind"?,"evidence": string}
+3. When strategy is act or recovery: both "command" and "actionKind" are REQUIRED.
+4. "evidence" is REQUIRED: cite screenshot / last_tool facts AND why you chose this strategy.
    Do NOT add a separate "reason" field.
-4. If you cannot see enough, still return JSON and put that limitation into "evidence" (prefer act/recovery over guessing pass/fail).
+5. If you cannot see enough, still return JSON and put that limitation into "evidence" (prefer act/recovery over guessing pass/fail).
 `.trim();
 
 /**
@@ -132,6 +155,8 @@ export function buildEpisodeSystemPrompt(instruction: Instruction): string {
     PLAN_STRATEGY_GUIDE,
     '',
     MIDSCENE_ACT_NL_GUIDE,
+    '',
+    MIDSCENE_ACTION_KIND_GUIDE,
     '',
     '## Current Instruction (fixed for this session)',
     `expectation: ${expectation}`,
@@ -159,8 +184,8 @@ export function buildPhaseUserPrompt(
   lastTool?: LastToolContext,
   options?: {
     hasExpectationRef?: boolean;
-    /** Goal Space ContextPack.textMarkdown */
-    goalSpaceMarkdown?: string;
+    /** Business 注入的不透明上下文（如 Goal Space ContextPack.md） */
+    extraContextMarkdown?: string;
   },
 ): string {
   void normalizeLlmPhase(phase);
@@ -196,15 +221,16 @@ export function buildPhaseUserPrompt(
 
   return [
     'Phase: plan.',
-    'Return ONLY JSON: {"strategy":"act"|"recovery"|"pass"|"fail","command"?,"evidence"} — evidence is REQUIRED.',
-    'Pick strategy from the matrix; when strategy is act or recovery, command MUST name the UI target (never bare "tap"/"click").',
+    'Return ONLY JSON: {"strategy":"act"|"recovery"|"pass"|"fail","command"?,"actionKind"?,"evidence"} — evidence is REQUIRED.',
+    'When strategy is act or recovery: command MUST name the UI target; actionKind MUST be a Midscene action name (Tap/Input/Scroll/…).',
+    'Pick strategy from the matrix; never bare "tap"/"click" as command.',
     '',
     'Current Instruction:',
     core,
     expHint,
     lastToolBlock,
     imageLine,
-    options?.goalSpaceMarkdown?.trim() || undefined,
+    options?.extraContextMarkdown?.trim() || undefined,
   ]
     .filter(Boolean)
     .join('\n');

@@ -4,6 +4,11 @@
  * 从模型文本解析 Plan JSON 信封（兼容旧 precondition/act/judge/end 形）。
  */
 
+import {
+  maxActionsForKind,
+  normalizeMidsceneActionKind,
+  type MidsceneActionKind,
+} from '../models/midscene-action-kind.js';
 import type { PlanStrategy, PlanTurn, ToolCall } from '../models/turns.js';
 import { ACT_NL_TOOL } from './act-nl.js';
 
@@ -50,10 +55,38 @@ function parseEvidence(
   return fallback;
 }
 
-function toolCallsForCommand(command: string): ToolCall[] {
+function toolCallsForCommand(
+  command: string,
+  actionKind: MidsceneActionKind,
+): ToolCall[] {
   const cmd = command.trim();
   if (!cmd) return [];
-  return [{ name: ACT_NL_TOOL, arguments: { prompt: cmd } }];
+  const maxActions = maxActionsForKind(actionKind);
+  return [
+    {
+      name: ACT_NL_TOOL,
+      arguments: {
+        prompt: cmd,
+        actionKind,
+        ...(maxActions !== undefined ? { maxActions } : {}),
+      },
+    },
+  ];
+}
+
+function parseActionKind(
+  obj: Record<string, unknown> | null,
+  command: string | undefined,
+): MidsceneActionKind | undefined {
+  if (!obj) return command ? normalizeMidsceneActionKind(undefined, command) : undefined;
+  const raw =
+    obj.actionKind ??
+    obj.action_kind ??
+    obj.midsceneAction ??
+    obj.eventType ??
+    obj.event;
+  if (raw == null && !command) return undefined;
+  return normalizeMidsceneActionKind(raw, command);
 }
 
 /**
@@ -101,13 +134,17 @@ function inferStrategy(
 }
 
 /**
- * Plan 信封：{"strategy","command"?,"evidence"}
+ * Plan 信封：{"strategy","command"?,"actionKind"?,"evidence"}
  * 兼容旧 met/next/satisfied/end 形。
  */
 export function parsePlan(text: string): Omit<PlanTurn, 'turnId' | 'at'> {
   const obj = extractJsonObject(text);
   const command = parseCommand(obj) || undefined;
   let strategy = inferStrategy(obj, command ?? '');
+  const actionKind =
+    strategy === 'act' || strategy === 'recovery'
+      ? parseActionKind(obj, command)
+      : undefined;
 
   // act/recovery 无 command → illegal
   if ((strategy === 'act' || strategy === 'recovery') && !command) {
@@ -123,7 +160,7 @@ export function parsePlan(text: string): Omit<PlanTurn, 'turnId' | 'at'> {
         : strategy === 'illegal'
           ? 'illegal or incomplete plan JSON'
           : command
-            ? `strategy=${strategy}; command=${command}`
+            ? `strategy=${strategy}; actionKind=${actionKind ?? '?'}; command=${command}`
             : `strategy=${strategy}`,
   );
 
@@ -134,15 +171,17 @@ export function parsePlan(text: string): Omit<PlanTurn, 'turnId' | 'at'> {
 
   const toolCalls =
     strategy === 'act' || strategy === 'recovery'
-      ? toolCallsForCommand(command ?? '')
+      ? toolCallsForCommand(command ?? '', actionKind ?? 'Tap')
       : [];
 
   console.log('[parse-phase:plan] ========== plan parse ==========');
   console.log('[parse-phase:plan] 1) model raw text:\n', text);
   console.log('[parse-phase:plan] 2) extracted JSON:', obj);
-  console.log('[parse-phase:plan] 3) strategy / command:', {
+  console.log('[parse-phase:plan] 3) strategy / command / actionKind:', {
     strategy,
     command: command ?? '(none)',
+    actionKind: actionKind ?? '(none)',
+    maxActions: actionKind ? maxActionsForKind(actionKind) : undefined,
   });
   console.log('[parse-phase:plan] ========== plan parse end ==========');
 
@@ -151,6 +190,7 @@ export function parsePlan(text: string): Omit<PlanTurn, 'turnId' | 'at'> {
     strategy,
     toolCalls,
     command,
+    actionKind,
     evidence: evidence.trim() || 'missing evidence in model JSON',
   };
 }

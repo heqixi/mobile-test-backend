@@ -45,6 +45,10 @@ export interface AgentTurnPlanEvent extends AgentLoopEventBase {
   type: 'turn.plan';
   strategy: PlanStrategy;
   command?: string;
+  /** Midscene actionSpace 分类 */
+  actionKind?: string;
+  /** 点击类为 1；其它省略表示不限制 */
+  maxActions?: number;
   evidence: string;
 }
 
@@ -56,6 +60,9 @@ export interface AgentTurnPlaygroundRunEvent extends AgentLoopEventBase {
   type: 'turn.playground_run';
   requestId: string;
   command: string;
+  actionKind?: string;
+  /** 点击类为 1；其它省略 → executor 侧不限制 */
+  maxActions?: number;
 }
 
 export interface AgentTurnToolResultEvent extends AgentLoopEventBase {

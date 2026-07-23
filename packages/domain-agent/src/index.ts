@@ -6,6 +6,7 @@
  */
 export * from './models/instruction.js';
 export * from './models/turns.js';
+export * from './models/midscene-action-kind.js';
 export * from './models/episode.js';
 export * from './models/instruction-result.js';
 export * from './models/agent-event.js';
