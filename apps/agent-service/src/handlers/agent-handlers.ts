@@ -80,8 +80,12 @@ export function createAgentHttpHandlers(deps: {
   agent: AgentPort;
   openCode: OpenCodeHttpClient;
   playgroundRuns?: PlaygroundRunHub;
+  goalSpaceBind?: {
+    get: () => { baseUrl: string; spaceIds: string[] } | null;
+    set: (bind: { baseUrl: string; spaceIds: string[] } | null) => void;
+  };
 }): AgentHttpHandlers {
-  const { agent, openCode, playgroundRuns } = deps;
+  const { agent, openCode, playgroundRuns, goalSpaceBind } = deps;
 
   return {
     async health() {
@@ -101,13 +105,58 @@ export function createAgentHttpHandlers(deps: {
       });
     },
 
+    async bindGoalSpace(body) {
+      try {
+        if (body?.clear === true || body == null) {
+          goalSpaceBind?.set(null);
+          return ok({ ok: true, bound: false });
+        }
+        const baseUrl =
+          typeof body.baseUrl === 'string' ? body.baseUrl.trim() : '';
+        const spaceIds = Array.isArray(body.spaceIds)
+          ? body.spaceIds.filter((s): s is string => typeof s === 'string' && s.trim().length > 0)
+          : [];
+        if (!baseUrl || spaceIds.length === 0) {
+          goalSpaceBind?.set(null);
+          return ok({ ok: true, bound: false });
+        }
+        goalSpaceBind?.set({ baseUrl, spaceIds });
+        return ok({
+          ok: true,
+          bound: true,
+          baseUrl,
+          spaceIds,
+        });
+      } catch (error) {
+        return fromError(error);
+      }
+    },
+
     async runInstruction(body: RunInstructionRequest) {
       try {
         const streamId =
           typeof body?.streamId === 'string' ? body.streamId : undefined;
-        const { streamId: _drop, ...rest } = body as RunInstructionRequest & {
+        const {
+          streamId: _drop,
+          goalSpaceBind: runBind,
+          ...rest
+        } = body as RunInstructionRequest & {
           streamId?: string;
+          goalSpaceBind?: { baseUrl: string; spaceIds: string[] } | null;
         };
+        if (runBind === null) {
+          goalSpaceBind?.set(null);
+        } else if (
+          runBind &&
+          typeof runBind.baseUrl === 'string' &&
+          Array.isArray(runBind.spaceIds) &&
+          runBind.spaceIds.length > 0
+        ) {
+          goalSpaceBind?.set({
+            baseUrl: runBind.baseUrl.trim(),
+            spaceIds: runBind.spaceIds,
+          });
+        }
         const instruction = toInstruction(rest, streamId);
         return ok(await agent.runInstruction(instruction));
       } catch (error) {

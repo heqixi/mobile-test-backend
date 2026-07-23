@@ -55,6 +55,8 @@ export const AgentHttpRoutes = {
   playgroundRunAck: '/api/agent/playground-runs/:requestId/ack',
   /** POST — 前端回报 Playground 执行结果 */
   playgroundRunResult: '/api/agent/playground-runs/:requestId/result',
+  /** POST — 绑定 Goal Space 检索 scope（按需 ContextPack；clear 清除） */
+  goalSpaceBind: '/api/agent/goal-space/bind',
   /** POST — 直连 OpenCode：创建 session */
   openCodeCreateSession: '/api/agent/opencode/sessions',
   /** POST — 直连 OpenCode：向 session 发消息（parts / text） */
@@ -63,12 +65,24 @@ export const AgentHttpRoutes = {
 
 // ── Request / Response bodies ──────────────────────────────────────────
 
+export type GoalSpaceBindRequest = {
+  baseUrl?: string;
+  spaceIds?: string[];
+  /** true 时清除绑定 */
+  clear?: boolean;
+};
+
 /**
  * POST `/api/agent/instructions/run`
  * 可附带 streamId，写入 Instruction.metadata 供 SSE 过滤。
+ * goalSpaceBind：本轮/会话检索 scope（按需，非整图）。
  */
 export type RunInstructionRequest = (Instruction | CreateInstructionInput) & {
   streamId?: string;
+  goalSpaceBind?: {
+    baseUrl: string;
+    spaceIds: string[];
+  } | null;
 };
 export type RunInstructionResponse = InstructionResult;
 
@@ -131,6 +145,7 @@ export interface AbortAgentRequest {
 
 export interface AgentHttpHandlers {
   runInstruction(body: RunInstructionRequest): Promise<HttpResult>;
+  bindGoalSpace(body: GoalSpaceBindRequest): Promise<HttpResult>;
   openEpisode(body: OpenEpisodeRequest): Promise<HttpResult>;
   getEpisode(id: UUID): Promise<HttpResult>;
   advance(id: UUID): Promise<HttpResult>;

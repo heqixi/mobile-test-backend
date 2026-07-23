@@ -45,6 +45,11 @@ export const agentServiceRouteTable: RouteDescriptor[] = [
   },
   {
     method: 'POST',
+    path: AgentHttpRoutes.goalSpaceBind,
+    summary: '绑定 Goal Space 检索 scope',
+  },
+  {
+    method: 'POST',
     path: AgentHttpRoutes.openEpisode,
     summary: '开启 Episode',
   },
@@ -146,6 +151,10 @@ export function createAgentHttpApi(deps: {
   agent: AgentPort;
   openCode: OpenCodeHttpClient;
   playgroundRuns?: PlaygroundRunHub;
+  goalSpaceBind?: {
+    get: () => { baseUrl: string; spaceIds: string[] } | null;
+    set: (bind: { baseUrl: string; spaceIds: string[] } | null) => void;
+  };
 }): AgentHttpApi {
   const handlers = createAgentHttpHandlers(deps);
 
@@ -164,6 +173,9 @@ export function createAgentHttpApi(deps: {
     }
     if (m === 'POST' && path === AgentHttpRoutes.runInstruction) {
       return handlers.runInstruction(body as never);
+    }
+    if (m === 'POST' && path === AgentHttpRoutes.goalSpaceBind) {
+      return handlers.bindGoalSpace(body as never);
     }
     if (m === 'POST' && path === AgentHttpRoutes.abort) {
       return handlers.abort(body as never);

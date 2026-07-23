@@ -54,6 +54,10 @@ export function createAgentHttpServer(
     openCode: OpenCodeHttpClient;
     eventHub: AgentEventHub;
     playgroundRuns?: PlaygroundRunHub;
+    goalSpaceBind?: {
+      get: () => { baseUrl: string; spaceIds: string[] } | null;
+      set: (bind: { baseUrl: string; spaceIds: string[] } | null) => void;
+    };
   },
   options?: { port?: number; host?: string },
 ) {
