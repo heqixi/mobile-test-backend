@@ -22,6 +22,8 @@ import {
   type GuidedActInput,
   type AddKeyframeNoteInput,
   type UpdateKeyframeNoteInput,
+  type PutGoalSpaceSpaceSummaryInput,
+  type GenerateGoalSpaceSpaceSummaryInput,
 } from '@mtp/domain-goal-space';
 import { createGoalSpaceRuntime } from '../create-runtime.js';
 import {
@@ -32,6 +34,12 @@ import { applyKeyframeLabel } from '../adapters/guided-capture.js';
 import {
   resolveKeyframeImageAbsolutePath,
 } from '../adapters/file-store.js';
+import {
+  putSpaceSummary,
+  readSpaceSummary,
+  writeSpaceSummary,
+} from '../adapters/file-space-summary.js';
+import { generateSpaceSummaryWithLlm } from '../adapters/openai-space-summary.js';
 import { goalSpaceDataDir } from '../paths.js';
 import { matchRoute, readBody, sendBinary, sendJson } from './http-utils.js';
 import { existsSync, readFileSync } from 'node:fs';
@@ -81,7 +89,7 @@ async function main() {
       if (req.method === 'OPTIONS') {
         res.writeHead(204, {
           'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'GET,POST,PATCH,DELETE,OPTIONS',
+          'Access-Control-Allow-Methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
           'Access-Control-Allow-Headers': 'Content-Type, Accept',
         });
         res.end();
@@ -218,6 +226,82 @@ async function main() {
               kinds: body.kinds,
             }),
           );
+          return;
+        }
+      }
+
+      {
+        const p = matchRoute(
+          goalSpaceRoutePatterns.spaceSummaryGenerate,
+          path,
+        );
+        if (method === 'POST' && p) {
+          const spaceId = p.spaceId!;
+          const body =
+            (await readBody(req)) as GenerateGoalSpaceSpaceSummaryInput;
+          let version = body.version?.trim();
+          if (!version) {
+            const latest = await rt.store.resolveLatest(spaceId);
+            if (!latest) {
+              sendJson(res, 404, {
+                code: 'VERSION_NOT_FOUND',
+                message: `no published version for space ${spaceId}`,
+              });
+              return;
+            }
+            version = latest.version;
+          }
+          const graph = await rt.store.getGraph({ spaceId, version });
+          const generated = await generateSpaceSummaryWithLlm(graph, body);
+          sendJson(res, 200, writeSpaceSummary(spaceId, generated));
+          return;
+        }
+      }
+
+      {
+        const p = matchRoute(goalSpaceRoutePatterns.spaceSummary, path);
+        if (method === 'GET' && p) {
+          const spaceId = p.spaceId!;
+          try {
+            const summary = readSpaceSummary(spaceId);
+            if (!summary) {
+              sendJson(res, 404, {
+                code: 'SPACE_NOT_FOUND',
+                message: `summary not found: ${spaceId}`,
+              });
+              return;
+            }
+            sendJson(res, 200, summary);
+          } catch (err) {
+            if (err instanceof GoalSpaceDomainError) {
+              sendJson(res, statusFor(err.code), {
+                code: err.code,
+                message: err.message,
+              });
+              return;
+            }
+            throw err;
+          }
+          return;
+        }
+        if (method === 'PUT' && p) {
+          const spaceId = p.spaceId!;
+          const body = (await readBody(req)) as PutGoalSpaceSpaceSummaryInput;
+          if (typeof body.overview !== 'string') {
+            sendJson(res, 400, {
+              code: 'INVALID',
+              message: 'overview required',
+            });
+            return;
+          }
+          if (!Array.isArray(body.keywords)) {
+            sendJson(res, 400, {
+              code: 'INVALID',
+              message: 'keywords array required',
+            });
+            return;
+          }
+          sendJson(res, 200, putSpaceSummary(spaceId, body));
           return;
         }
       }

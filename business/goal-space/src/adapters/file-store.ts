@@ -18,6 +18,7 @@ import type {
   KeyframeId,
   OpenCodePackManifest,
   Transition,
+  GoalSpaceSpaceSummary,
 } from '@mtp/domain-goal-space';
 import { GoalSpaceDomainError } from '@mtp/domain-goal-space';
 import { goalSpaceDataDir, spaceDir, versionDir } from '../paths.js';
@@ -44,6 +45,7 @@ export function createFileGoalSpaceStorePort(): GoalSpaceStorePort {
           displayName?: string;
           description?: string;
           tags?: string[];
+          summary?: GoalSpaceSpaceSummary;
         }>(metaPath);
         let latestVersion: string | undefined;
         const lp = latestFile(spaceId);
@@ -56,6 +58,7 @@ export function createFileGoalSpaceStorePort(): GoalSpaceStorePort {
           description: meta.description,
           latestVersion,
           tags: meta.tags,
+          summary: meta.summary,
         });
       }
       return out;
