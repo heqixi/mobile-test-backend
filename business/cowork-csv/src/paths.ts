@@ -24,5 +24,5 @@ export function coworkCsvDataDir(): string {
 export function defaultCoworkCsvPath(): string {
   const fromEnv = process.env.COWORK_CSV_PATH?.trim();
   if (fromEnv) return resolve(fromEnv);
-  return join(coworkCsvDataDir(), 'cowork_test_case_top10.csv');
+  return join(coworkCsvDataDir(), 'cowork_test_case_p0.csv');
 }

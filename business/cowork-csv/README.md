@@ -4,9 +4,10 @@
 
 | 路径 | 说明 |
 |------|------|
-| `data/cowork_test_case_top10.csv` | 默认用例源（可用 `COWORK_CSV_PATH` 覆盖） |
+| `data/cowork_test_case_p0.csv` | 默认用例源（P0；可用 `COWORK_CSV_PATH` 覆盖） |
 | `data/<csv>.compiled.json` | 编译 sidecar |
 | `data/<csv>.reports/` | Midscene 运行报告（HTML + JSON + index） |
+| `assets/midscene-report-template.html` | 报告 SPA 壳（vendored core 未注入模板时用于落盘） |
 
 - 编译：业务切步 → 逐条调用 `LlmInstructionCompiler` → sidecar `*.compiled.json`
 - HTTP 协议由 `domain-case` 的 `case-library-http` 定义

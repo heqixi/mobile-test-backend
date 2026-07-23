@@ -1,0 +1,56 @@
+{
+  "cowork-cec18c74c0b7": {
+    "caseId": "cowork-cec18c74c0b7",
+    "instructions": [
+      {
+        "instructionId": "4913f2b5-20c8-4d10-a811-5b8ce210a9ee",
+        "expectation": "页面跳转至cowork相关功能页或cowork入口对应的子页面",
+        "preconditions": "已登录个人账号，当前处于首页",
+        "actions": [
+          "找到并点击首页中的cowork入口入口"
+        ],
+        "hints": [
+          "cowork入口在首页的具体位置可能因版本不同而异，可能是图标、卡片或列表项",
+          "本步仅为第一步，后续还有操作未完成"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-cec18c74c0b7",
+          "stepId": "step-1",
+          "stepOrder": 1,
+          "title": "个人账号使用cowork",
+          "source": "cowork-csv",
+          "stepText": "点击首页cowork入口",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      },
+      {
+        "instructionId": "93548b34-119c-4a1c-8fc7-80ccccf8b528",
+        "expectation": "页面显示内容正在生成或已生成回复内容（如加载动画、思考中状态或最终输出文本）",
+        "preconditions": "已登录个人账号，主界面已加载完成，聊天输入区域或侧边栏入口可见",
+        "actions": [
+          "在聊天输入区域中输入文本内容",
+          "点击发送按钮"
+        ],
+        "hints": [
+          "若输入内容后发送未响应，可尝试点击侧边栏按钮确认功能是否正常",
+          "发送成功的界面表现因内容类型可能不同（文字回复、图片、卡片等）"
+        ],
+        "timeoutMs": 60000,
+        "metadata": {
+          "caseId": "cowork-cec18c74c0b7",
+          "stepId": "step-2",
+          "stepOrder": 2,
+          "title": "个人账号使用cowork",
+          "source": "cowork-csv",
+          "stepText": "输入内容点击发送/点击侧边栏按钮",
+          "expectationSource": "llm",
+          "sourceTag": "llm"
+        }
+      }
+    ],
+    "compiledAt": "2026-07-22T02:50:11.182Z",
+    "sourceTag": "panel-auto-save"
+  }
+}
