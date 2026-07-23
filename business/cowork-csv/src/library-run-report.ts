@@ -10,8 +10,10 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { getVersion } from '@midscene/core';
-import { reportHTMLContent } from '@midscene/core/utils';
+import { insertScriptBeforeClosingHtml } from '@midscene/core/utils';
+import { escapeScriptTag } from '@midscene/shared/utils';
 import type {
   LibraryCaseRunResult,
   LibraryInstructionRunSummary,
@@ -34,6 +36,65 @@ import {
 
 export { serializeCsv } from './csv-io.js';
 
+const here = dirname(fileURLToPath(import.meta.url));
+const REPORT_TEMPLATE_PATH = resolve(
+  here,
+  '../assets/midscene-report-template.html',
+);
+
+/**
+ * Vendored @midscene/core 若未注入报告 SPA 模板，getReportTpl() 会变成
+ * REPLACE_ME_WITH_REPORT_HTML（无 </html>），导致 reportHTMLContent(append)
+ * 抛错。因此使用本包内已提取的完整报告壳，并自行追加 dump script。
+ */
+function loadReportHtmlTemplate(): string {
+  if (!existsSync(REPORT_TEMPLATE_PATH)) {
+    throw new Error(
+      `Midscene report template missing: ${REPORT_TEMPLATE_PATH}. ` +
+        'Restore business/cowork-csv/assets/midscene-report-template.html',
+    );
+  }
+  const tpl = readFileSync(REPORT_TEMPLATE_PATH, 'utf8');
+  if (!tpl.includes('</html>')) {
+    throw new Error(
+      `Invalid Midscene report template (no </html>): ${REPORT_TEMPLATE_PATH}`,
+    );
+  }
+  return tpl;
+}
+
+function ensureReportHtmlShell(htmlPath: string): void {
+  mkdirSync(dirname(htmlPath), { recursive: true });
+  if (existsSync(htmlPath)) {
+    const existing = readFileSync(htmlPath, 'utf8');
+    // 覆盖 vendored Midscene 写出的占位符，或任何缺 </html> 的残缺文件
+    if (
+      existing.includes('</html>') &&
+      !existing.includes('REPLACE_ME_WITH_REPORT_HTML')
+    ) {
+      return;
+    }
+  }
+  writeFileSync(htmlPath, loadReportHtmlTemplate(), 'utf8');
+}
+
+function appendCaseDumpToReportHtml(
+  htmlPath: string,
+  dumpString: string,
+  attributes: MidsceneReportDumpAttributes,
+): void {
+  ensureReportHtmlShell(htmlPath);
+  const attributesArr = Object.entries(attributes)
+    .filter(([, value]) => value !== undefined && value !== null)
+    .map(
+      ([key, value]) => `${key}="${encodeURIComponent(String(value))}"`,
+    );
+  const dumpContent =
+    `<script type="midscene_web_dump" type="application/json" ${attributesArr.join(' ')}>\n` +
+    `${escapeScriptTag(dumpString)}\n` +
+    `</script>`;
+  insertScriptBeforeClosingHtml(htmlPath, dumpContent);
+}
 export interface BuildCaseRunResultInput {
   caseId: string;
   title: string;
@@ -301,44 +362,33 @@ export function persistLibraryRunReport(options: {
   const dumpPath = reportJsonPath(reportsDir, reportId);
 
   // Midscene HTML：每个用例一条 dump script + playwright_* attributes。
-  // 注意：必须全程 append=true。若首条用 append=false、后续 append=true，
-  // Midscene 会因 reportInitializedMap 未标记而用空模板覆盖首条 dump（失败用例丢失）。
-  options.cases.forEach((c) => {
-    const dumpString = JSON.stringify(c.dump);
-    reportHTMLContent(
-      {
-        dumpString,
-        attributes: {
-          ...c.attributes,
-          playwright_test_duration: c.attributes.playwright_test_duration,
-        },
-      },
-      htmlPath,
-      true,
-    );
-  });
+  // 不调用 reportHTMLContent：vendored core 未注入 SPA 模板时会写成
+  // REPLACE_ME_WITH_REPORT_HTML 并在找 </html> 时失败。
+  for (const c of options.cases) {
+    appendCaseDumpToReportHtml(htmlPath, JSON.stringify(c.dump), {
+      ...c.attributes,
+      playwright_test_duration: c.attributes.playwright_test_duration,
+    });
+  }
 
   if (options.cases.length === 0) {
-    reportHTMLContent(
-      {
-        dumpString: JSON.stringify({
-          sdkVersion,
-          groupName: options.groupName,
-          groupDescription: options.groupDescription,
-          modelBriefs: [],
-          executions: [],
-          deviceType: options.deviceType,
-        } satisfies MidsceneReportActionDump),
-        attributes: {
-          playwright_test_id: reportId,
-          playwright_test_title: options.groupName,
-          playwright_test_description: options.groupDescription ?? '',
-          playwright_test_status: 'skipped',
-          playwright_test_duration: 0,
-        },
-      },
+    appendCaseDumpToReportHtml(
       htmlPath,
-      false,
+      JSON.stringify({
+        sdkVersion,
+        groupName: options.groupName,
+        groupDescription: options.groupDescription,
+        modelBriefs: [],
+        executions: [],
+        deviceType: options.deviceType,
+      } satisfies MidsceneReportActionDump),
+      {
+        playwright_test_id: reportId,
+        playwright_test_title: options.groupName,
+        playwright_test_description: options.groupDescription ?? '',
+        playwright_test_status: 'skipped',
+        playwright_test_duration: 0,
+      },
     );
   }
 
