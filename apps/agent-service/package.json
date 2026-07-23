@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@mtp/domain-agent": "0.0.0",
+    "@mtp/domain-goal-space": "0.0.0",
     "@mtp/shared-kernel": "0.0.0",
     "dotenv": "^16.3.1"
   },

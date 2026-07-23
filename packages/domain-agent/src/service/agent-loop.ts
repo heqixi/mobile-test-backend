@@ -109,6 +109,9 @@ export interface CreateAgentLoopOptions extends OpenCodeHttpOptions {
     error?: string;
   } | null>;
   cancelPlaygroundRun?: (requestId: string) => void;
+  /** Goal Space 检索（ContextPack 注入 plan） */
+  goalSpace?: import('@mtp/domain-goal-space').GoalSpaceRetrievePort;
+  goalSpaceRef?: { spaceId: string; version?: string };
 }
 
 function envLimit(
@@ -118,6 +121,10 @@ function envLimit(
 ): number {
   const raw = option ?? Number(process.env[envName] ?? fallback);
   return Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : fallback;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 export function createAgentLoop(
@@ -158,6 +165,18 @@ export function createAgentLoop(
   const openCodeModel = resolveOpenCodeModel(options.model);
   const runActNlViaPlayground = options.runActNlViaPlayground;
   const cancelPlaygroundRun = options.cancelPlaygroundRun;
+  /** Midscene aiAct / Playground 执行超时（默认 15s） */
+  const actTimeoutMs = envLimit(
+    undefined,
+    'AGENT_ACT_TIMEOUT_MS',
+    15_000,
+  );
+  /** act 结果返回后、下一轮 plan 截图前的稳定等待（默认 1s） */
+  const postActScreenshotDelayMs = envLimit(
+    undefined,
+    'AGENT_POST_ACT_SCREENSHOT_DELAY_MS',
+    1_000,
+  );
   const episodes = new Map<UUID, EpisodeRecord>();
   const pendingAbortStreamIds = new Set<string>();
 
@@ -166,6 +185,8 @@ export function createAgentLoop(
     executor,
     openCodeModel,
     onEvent,
+    goalSpace: options.goalSpace,
+    goalSpaceRef: options.goalSpaceRef,
   };
 
   function log(
@@ -607,8 +628,16 @@ export function createAgentLoop(
       throwIfAborted(rec);
 
       if (!freeform) {
-        freeform = await executor.freeformExecute(command);
+        freeform = await executor.freeformExecute(command, actTimeoutMs);
         throwIfAborted(rec);
+      } else if (
+        freeform.ok === false &&
+        /timeout/i.test(freeform.error ?? '')
+      ) {
+        // Playground 已超时：打断仍在跑的 Midscene，避免后台继续点
+        await executor.abort(`act timeout after ${actTimeoutMs}ms`).catch(
+          () => undefined,
+        );
       }
 
       ok = freeform.ok;
@@ -640,6 +669,15 @@ export function createAgentLoop(
       resultPreview,
     });
 
+    // 等 UI 动画/页面稳定后再截图给下一轮 Plan LLM
+    if (command && postActScreenshotDelayMs > 0) {
+      log('info', 'post-act screenshot delay', {
+        episodeId: rec.episode.episodeId,
+        delayMs: postActScreenshotDelayMs,
+      });
+      await sleep(postActScreenshotDelayMs);
+      throwIfAborted(rec);
+    }
     const tr = transitionFromAct({
       actResult: ok ? 'success' : 'failure',
       consecutiveActFailures: rec.episode.consecutiveActFailures ?? 0,

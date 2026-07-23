@@ -8,7 +8,8 @@
   },
   "references": [
     { "path": "../../packages/shared-kernel" },
-    { "path": "../../packages/domain-agent" }
+    { "path": "../../packages/domain-agent" },
+    { "path": "../../packages/domain-goal-space" }
   ],
   "include": ["src"]
 }

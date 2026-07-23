@@ -14,6 +14,7 @@ import {
   createOpenCodeHttpClient,
   probeOpenCode,
 } from '@mtp/domain-agent';
+import { createGoalSpaceHttpClient } from '@mtp/domain-goal-space';
 import { createAgentHttpServer } from './http-server.js';
 import { createAgentEventHub } from './sse/agent-event-hub.js';
 import { createPlaygroundRunHub } from './sse/playground-run-hub.js';
@@ -29,10 +30,15 @@ const openCodeUrl =
   process.env.OPENCODE_URL ?? 'http://127.0.0.1:4096';
 const executorUrl =
   process.env.EXECUTOR_URL ?? 'http://127.0.0.1:4098';
+const goalSpaceUrl =
+  process.env.GOAL_SPACE_URL ?? 'http://127.0.0.1:4104';
 
 async function main() {
   const eventHub = createAgentEventHub();
-  const playgroundRuns = createPlaygroundRunHub();
+  const playgroundRuns = createPlaygroundRunHub({
+    claimTimeoutMs: Number(process.env.AGENT_PLAYGROUND_CLAIM_TIMEOUT_MS ?? 8_000),
+    resultTimeoutMs: Number(process.env.AGENT_ACT_TIMEOUT_MS ?? 15_000),
+  });
   const openCode = createOpenCodeHttpClient({
     baseUrl: openCodeUrl,
     directory: process.env.OPENCODE_DIRECTORY,
@@ -40,9 +46,20 @@ async function main() {
     password: process.env.OPENCODE_SERVER_PASSWORD,
   });
   const executor = createExecutorHttpClient({ baseUrl: executorUrl });
+  const goalSpace =
+    process.env.AGENT_GOAL_SPACE === '0'
+      ? undefined
+      : createGoalSpaceHttpClient({ baseUrl: goalSpaceUrl });
   const agent = createAgentLoop({
     client: openCode,
     executor,
+    goalSpace,
+    goalSpaceRef: process.env.GOAL_SPACE_ID
+      ? {
+          spaceId: process.env.GOAL_SPACE_ID,
+          version: process.env.GOAL_SPACE_VERSION || undefined,
+        }
+      : undefined,
     onEvent: (event) => eventHub.publish(event),
     runActNlViaPlayground: async ({ command, requestId }) => {
       return playgroundRuns.wait(requestId, command);
@@ -68,6 +85,9 @@ async function main() {
   console.log(`  SSE        http://${http.host}:${http.port}/api/agent/events`);
   console.log(`  OpenCode   ${openCode.baseUrl} (${probe.ok ? 'up' : 'DOWN'})`);
   console.log(`  Executor   ${executor.baseUrl}`);
+  console.log(
+    `  GoalSpace  ${goalSpaceUrl} (${goalSpace ? 'enabled' : 'disabled'})`,
+  );
   console.log(`  Playground act_nl → UniversalPlayground (ack/result)`);
   if (!probe.ok) {
     console.log(`  warn       ${probe.message ?? 'OpenCode unreachable'}`);

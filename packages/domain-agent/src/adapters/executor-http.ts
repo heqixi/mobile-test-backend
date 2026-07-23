@@ -181,6 +181,10 @@ export class ExecutorHttpClient {
     if (!trimmed) {
       return { ok: false, prompt: '', error: 'prompt is required' };
     }
+    const effectiveTimeout =
+      typeof timeoutMs === 'number' && Number.isFinite(timeoutMs) && timeoutMs > 0
+        ? Math.floor(timeoutMs)
+        : 15_000;
     try {
       const res = await this.request<{
         ok?: boolean;
@@ -189,10 +193,16 @@ export class ExecutorHttpClient {
         result?: unknown;
         report?: { result?: unknown };
         error?: string;
-      }>('POST', '/freeform/execute', {
-        prompt: trimmed,
-        timeoutMs,
-      });
+      }>(
+        'POST',
+        '/freeform/execute',
+        {
+          prompt: trimmed,
+          timeoutMs: effectiveTimeout,
+        },
+        // HTTP 层略宽于 Midscene abort，避免竞态先断连接
+        { timeoutMs: effectiveTimeout + 2_000 },
+      );
       return {
         ok: res.ok === true,
         prompt: trimmed,

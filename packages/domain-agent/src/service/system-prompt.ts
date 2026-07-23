@@ -159,6 +159,8 @@ export function buildPhaseUserPrompt(
   lastTool?: LastToolContext,
   options?: {
     hasExpectationRef?: boolean;
+    /** Goal Space ContextPack.textMarkdown */
+    goalSpaceMarkdown?: string;
   },
 ): string {
   void normalizeLlmPhase(phase);
@@ -202,6 +204,7 @@ export function buildPhaseUserPrompt(
     expHint,
     lastToolBlock,
     imageLine,
+    options?.goalSpaceMarkdown?.trim() || undefined,
   ]
     .filter(Boolean)
     .join('\n');

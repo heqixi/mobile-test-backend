@@ -6,6 +6,9 @@
     "outDir": "dist",
     "noEmit": false
   },
-  "references": [{ "path": "../shared-kernel" }],
+  "references": [
+    { "path": "../shared-kernel" },
+    { "path": "../domain-goal-space" }
+  ],
   "include": ["src"]
 }

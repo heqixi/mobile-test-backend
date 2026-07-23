@@ -5,6 +5,7 @@
  * 不向模型注入 preconditions 文本或 PreCondition Golden。
  */
 
+import type { GoalSpaceRetrievePort } from '@mtp/domain-goal-space';
 import type { ExecutorHttpClient } from '../adapters/executor-http.js';
 import {
   extractAssistantText,
@@ -25,6 +26,7 @@ import { baseEvent, type EpisodeRecord } from './episode-record.js';
 import {
   buildEpisodeSystemPrompt,
   buildPhaseUserPrompt,
+  expectationText,
 } from './system-prompt.js';
 
 export interface PhaseLlmDeps {
@@ -32,6 +34,9 @@ export interface PhaseLlmDeps {
   executor: ExecutorHttpClient;
   openCodeModel: { providerID: string; modelID: string };
   onEvent?: AgentLoopEventListener;
+  /** 可选：Goal Space 检索门面 */
+  goalSpace?: GoalSpaceRetrievePort;
+  goalSpaceRef?: { spaceId: string; version?: string };
 }
 
 export async function askPhaseLlm(
@@ -39,7 +44,8 @@ export async function askPhaseLlm(
   rec: EpisodeRecord,
   phase: LlmPhase = 'plan',
 ): Promise<string> {
-  const { client, executor, openCodeModel, onEvent } = deps;
+  const { client, executor, openCodeModel, onEvent, goalSpace, goalSpaceRef } =
+    deps;
 
   const shot = await executor.captureScreenshot();
   const imageDataUrl = shot.ok ? shot.dataUrl : undefined;
@@ -80,11 +86,45 @@ export async function askPhaseLlm(
 
   const hasExpectationRef = Boolean(expectationDataUrl);
 
+  let goalSpaceMarkdown: string | undefined;
+  if (goalSpace && process.env.AGENT_GOAL_SPACE !== '0') {
+    const spaceId =
+      goalSpaceRef?.spaceId ??
+      process.env.GOAL_SPACE_ID?.trim() ??
+      'cowork-android';
+    const version =
+      goalSpaceRef?.version ?? process.env.GOAL_SPACE_VERSION?.trim();
+    const intent = [
+      expectationText(rec.episode.instruction),
+      ...(rec.episode.instruction.actions ?? []),
+      rec.pendingCommand,
+    ]
+      .filter(Boolean)
+      .join('\n');
+    try {
+      const pack = await goalSpace.retrieve({
+        spaceId,
+        ref: version ? { spaceId, version } : undefined,
+        intentText: intent || '当前界面下一步操作',
+        currentScreenshot: shot.ok
+          ? { base64: shot.base64 ?? imageDataUrl ?? '' }
+          : undefined,
+        strategy: 'auto',
+      });
+      goalSpaceMarkdown = pack.textMarkdown;
+    } catch (err) {
+      console.warn(
+        '[phase-llm] goal-space retrieve skipped:',
+        err instanceof Error ? err.message : err,
+      );
+    }
+  }
+
   const userText = buildPhaseUserPrompt(
     phase,
     rec.episode.instruction,
     lastToolFromEpisode(rec.episode),
-    { hasExpectationRef },
+    { hasExpectationRef, goalSpaceMarkdown },
   );
 
   const sseBits = [
