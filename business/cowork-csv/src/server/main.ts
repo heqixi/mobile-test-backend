@@ -13,8 +13,10 @@ import { fileURLToPath } from 'node:url';
 import type {
   ConnectedCompiledBundle,
   CompileProgressEvent,
+  CreateLibraryRunSessionInput,
   LibraryCaseRunResult,
   LibraryRunReportWritebackRequest,
+  PatchLibraryRunSessionInput,
 } from '@mtp/domain-case';
 import {
   CaseDomainError,
@@ -23,11 +25,11 @@ import {
   createLlmInstructionCompiler,
 } from '@mtp/domain-case';
 import { createOpenCodeHttpClient } from '@mtp/domain-agent';
-import { createGoalSpaceHttpClient } from '@mtp/domain-goal-space';
 import {
   createCoworkCsvAdapter,
   type CreateCoworkCsvAdapterOptions,
 } from '../index.js';
+import { createGoalSpaceCompileEnricher } from '../bind-goal-space-context.js';
 import { compileCoworkCase } from '../compile-case.js';
 import {
   getLibraryRunReport,
@@ -36,8 +38,28 @@ import {
   buildLibraryCaseRunResult,
   writebackLibraryRunReportToCsv,
 } from '../library-run-report.js';
+import {
+  createLibraryRunSession,
+  getLibraryRunSession,
+  listLibraryRunSessions,
+  patchLibraryRunSession,
+  resolveSessionArtifactFile,
+  writeSessionRunArtifacts,
+} from '../library-run-session.js';
 import { defaultCoworkCsvPath } from '../paths.js';
 import { matchRoute, readBody, sendJson } from './http-utils.js';
+
+function contentTypeForArtifact(fileName: string): string {
+  const lower = fileName.toLowerCase();
+  if (lower.endsWith('.html')) return 'text/html; charset=utf-8';
+  if (lower.endsWith('.json')) return 'application/json; charset=utf-8';
+  if (lower.endsWith('.txt')) return 'text/plain; charset=utf-8';
+  if (lower.endsWith('.png')) return 'image/png';
+  if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'image/jpeg';
+  if (lower.endsWith('.webp')) return 'image/webp';
+  if (lower.endsWith('.gif')) return 'image/gif';
+  return 'application/octet-stream';
+}
 
 const here = dirname(fileURLToPath(import.meta.url));
 loadEnv({ path: resolve(here, '../../../../.env') });
@@ -90,25 +112,23 @@ async function main() {
     password: process.env.OPENCODE_SERVER_PASSWORD,
   });
   const llmCompiler = createLlmInstructionCompiler({ client: openCode });
-  const goalSpace =
-    process.env.COWORK_GOAL_SPACE === '0'
-      ? undefined
-      : createGoalSpaceHttpClient({
-          baseUrl: process.env.GOAL_SPACE_URL ?? 'http://127.0.0.1:4104',
-        });
-  const goalSpaceRef = process.env.GOAL_SPACE_ID
-    ? {
-        spaceId: process.env.GOAL_SPACE_ID,
-        version: process.env.GOAL_SPACE_VERSION || undefined,
-      }
-    : undefined;
+  const enrichStepContext = createGoalSpaceCompileEnricher();
+  const goalSpaceBound = Boolean(enrichStepContext);
+  const goalSpaceLabel = `${process.env.GOAL_SPACE_ID?.trim() || 'cowork-android'}@${process.env.GOAL_SPACE_VERSION?.trim() || 'latest'}`;
+  console.log(
+    `[cowork-csv] Goal Space compile inject: ${
+      goalSpaceBound
+        ? `ON ${goalSpaceLabel} (env; FE bind does not control this)`
+        : 'OFF (COWORK_GOAL_SPACE=0)'
+    }`,
+  );
 
   const server = createServer(async (req, res) => {
     try {
       if (req.method === 'OPTIONS') {
         res.writeHead(204, {
           'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
+          'Access-Control-Allow-Methods': 'GET,POST,PATCH,OPTIONS',
           'Access-Control-Allow-Headers': 'Content-Type, Accept',
         });
         res.end();
@@ -201,8 +221,7 @@ async function main() {
               const bundle = await compileCoworkCase(detail, llmCompiler, {
                 onProgress: writeEvent,
                 onPartial: (partial) => adapter.saveCompiled(partial),
-                goalSpace,
-                goalSpaceRef,
+                enrichStepContext,
               });
               await adapter.saveCompiled(bundle);
             } catch (error) {
@@ -228,8 +247,7 @@ async function main() {
 
           const bundle = await compileCoworkCase(detail, llmCompiler, {
             onPartial: (partial) => adapter.saveCompiled(partial),
-            goalSpace,
-            goalSpaceRef,
+            enrichStepContext,
           });
           await adapter.saveCompiled(bundle);
           sendJson(res, 200, bundle);
@@ -287,6 +305,7 @@ async function main() {
           >;
           reportId?: string;
           createdAt?: string;
+          sessionId?: string;
         };
         if (!Array.isArray(body.cases)) {
           sendJson(res, 400, {
@@ -303,7 +322,7 @@ async function main() {
             deviceType: body.deviceType,
           });
         });
-        const report = persistLibraryRunReport({
+        let report = persistLibraryRunReport({
           csvPath,
           groupName:
             body.groupName ??
@@ -315,6 +334,22 @@ async function main() {
           reportId: body.reportId,
           createdAt: body.createdAt,
         });
+        const sessionId = body.sessionId?.trim();
+        if (sessionId) {
+          try {
+            const { artifactsPath } = writeSessionRunArtifacts(
+              csvPath,
+              sessionId,
+              report,
+            );
+            report = { ...report, artifactsPath };
+          } catch (error) {
+            const message =
+              error instanceof Error ? error.message : String(error);
+            sendJson(res, 400, { error: message });
+            return;
+          }
+        }
         sendJson(res, 201, report);
         return;
       }
@@ -369,6 +404,110 @@ async function main() {
         }
       }
 
+      // ── Run sessions ─────────────────────────────────────────
+      if (method === 'GET' && path === caseLibraryPaths.runSessions) {
+        sendJson(res, 200, listLibraryRunSessions(csvPath));
+        return;
+      }
+      if (method === 'POST' && path === caseLibraryPaths.runSessions) {
+        const body = (await readBody(req)) as CreateLibraryRunSessionInput;
+        try {
+          const session = createLibraryRunSession(csvPath, {
+            ...body,
+            groupName:
+              body.groupName ??
+              adapter.info.displayName ??
+              'Cowork CSV library run',
+          });
+          sendJson(res, 201, session);
+        } catch (error) {
+          const message =
+            error instanceof Error ? error.message : String(error);
+          sendJson(res, 400, { error: message });
+        }
+        return;
+      }
+      {
+        // /api/library/run-sessions/:id/artifacts[/...] — 支持 screenshots 子目录
+        const artifactsPrefix = /^\/api\/library\/run-sessions\/([^/]+)\/artifacts(?:\/(.*))?$/;
+        const artMatch = artifactsPrefix.exec(path);
+        if (method === 'GET' && artMatch?.[1]) {
+          const sessionId = decodeURIComponent(artMatch[1]);
+          const rel = artMatch[2]
+            ? decodeURIComponent(artMatch[2])
+            : 'index.html';
+          const filePath = resolveSessionArtifactFile(csvPath, sessionId, rel);
+          if (!filePath) {
+            sendJson(res, 404, {
+              error: `Artifact not found: ${rel}`,
+            });
+            return;
+          }
+          res.writeHead(200, {
+            'Content-Type': contentTypeForArtifact(rel),
+            'Access-Control-Allow-Origin': '*',
+          });
+          createReadStream(filePath).pipe(res);
+          return;
+        }
+      }
+      {
+        const p = matchRoute(caseLibraryRoutePatterns.runSessionDetail, path);
+        if (method === 'GET' && p?.sessionId) {
+          const session = getLibraryRunSession(csvPath, p.sessionId);
+          if (!session) {
+            sendJson(res, 404, {
+              error: `Session not found: ${p.sessionId}`,
+            });
+            return;
+          }
+          sendJson(res, 200, session);
+          return;
+        }
+        if (method === 'PATCH' && p?.sessionId) {
+          const body = (await readBody(req)) as PatchLibraryRunSessionInput;
+          try {
+            if (Array.isArray(body.cases)) {
+              body.cases = body.cases.map((c) => {
+                if (!c.result) return c;
+                if (
+                  'dump' in c.result &&
+                  c.result.dump &&
+                  'attributes' in c.result &&
+                  c.result.attributes
+                ) {
+                  return c;
+                }
+                return {
+                  ...c,
+                  result: buildLibraryCaseRunResult({
+                    ...c.result,
+                    caseId: c.caseId,
+                    title: c.title ?? c.result.title ?? c.caseId,
+                    status: c.result.status,
+                    durationMs: c.result.durationMs ?? 0,
+                  }),
+                };
+              });
+            }
+            sendJson(
+              res,
+              200,
+              patchLibraryRunSession(csvPath, p.sessionId, body),
+            );
+          } catch (error) {
+            const message =
+              error instanceof Error ? error.message : String(error);
+            sendJson(
+              res,
+              message.includes('not found') ? 404 : 400,
+              { error: message },
+            );
+          }
+          return;
+        }
+      }
+
       sendJson(res, 404, { error: `Unknown route ${method} ${path}` });
     } catch (error) {
       if (error instanceof CaseDomainError) {
@@ -394,6 +533,9 @@ async function main() {
   console.log(`  CSV    ${csvPath}`);
   console.log(`  Reports ${csvPath}.reports/`);
   console.log(`  OpenCode ${openCode.baseUrl}`);
+  console.log(
+    `  GoalSpace ${goalSpaceBound ? `bound ${goalSpaceLabel}` : 'disabled (COWORK_GOAL_SPACE=0)'}`,
+  );
   console.log(`  GET    ${caseLibraryPaths.health} ${caseLibraryPaths.info}`);
   console.log(`  GET    ${caseLibraryPaths.cases}`);
   console.log(`  POST   ${caseLibraryPaths.casesReorder}`);
@@ -402,6 +544,9 @@ async function main() {
   console.log(`  GET/POST ${caseLibraryPaths.reports} (Midscene dump HTML)`);
   console.log(`  GET    /api/library/reports/:id[/html]`);
   console.log(`  POST   /api/library/reports/:id/writeback`);
+  console.log(`  GET/POST ${caseLibraryPaths.runSessions}`);
+  console.log(`  GET/PATCH /api/library/run-sessions/:id`);
+  console.log(`  GET    /api/library/run-sessions/:id/artifacts[/index.html]`);
   console.log('');
 }
 

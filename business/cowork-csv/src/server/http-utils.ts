@@ -7,7 +7,7 @@ export function sendJson(
   res.writeHead(status, {
     'Content-Type': 'application/json; charset=utf-8',
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
+    'Access-Control-Allow-Methods': 'GET,POST,PATCH,OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
   });
   res.end(payload);

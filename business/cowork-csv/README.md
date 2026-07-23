@@ -25,6 +25,12 @@ npm run cowork-library:serve   # 默认 http://127.0.0.1:4103（需 OpenCode :40
 | `COWORK_CSV_PATH` | 覆盖默认 CSV 绝对/相对路径 |
 | `COWORK_CSV_DATA_DIR` | 覆盖默认 `data/` 目录（仅在未设 `COWORK_CSV_PATH` 时影响默认文件名解析） |
 | `COWORK_LIBRARY_PORT` | 默认 `4103` |
+| `COWORK_GOAL_SPACE` | `0` 关闭编译期 Goal Space 注入；默认开启 |
+| `GOAL_SPACE_URL` | 默认 `http://127.0.0.1:4104` |
+| `GOAL_SPACE_ID` / `GOAL_SPACE_VERSION` | 编译绑定的 space@version（version 空则 latest） |
+
+Goal Space 由 **本业务** 经 `createGoalSpaceCompileEnricher` 绑定；`domain-case` 只收到拼好的 `caseText`，不依赖 Goal Space。
+
 
 主工程经 RemoteCaseDataSource 连接：
 

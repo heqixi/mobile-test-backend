@@ -1,6 +1,6 @@
 /**
  * Cowork 业务：切步 + 逐条调用 LlmInstructionCompiler → ConnectedCompiledBundle。
- * 可选注入 Goal Space ContextPack（文本通道 / 级联检索）。
+ * 可选业务上下文经 enrichStepContext 注入（不透明 markdown）；域不感知 Goal Space。
  */
 
 import type {
@@ -10,14 +10,14 @@ import type {
   ConnectedCompiledBundle,
   LlmInstructionCompilerPort,
 } from '@mtp/domain-case';
-import type { GoalSpaceRetrievePort } from '@mtp/domain-goal-space';
+import type { EnrichCompileStepContext } from './bind-goal-space-context.js';
 import { splitCoworkSteps, type CoworkStepSegment } from './split-steps.js';
 
 export function buildStepCompileInput(
   detail: ConnectedCaseDetail,
   step: CoworkStepSegment,
   stepCount: number,
-  goalSpaceMarkdown?: string,
+  extraContextMarkdown?: string,
 ): CompileCaseInput {
   const isLast = step.order === stepCount;
   const parts = [
@@ -32,7 +32,7 @@ export function buildStepCompileInput(
     isLast && detail.expectedText?.trim()
       ? `整案预期结果（本步为最后一步，expectation 应对齐）：\n${detail.expectedText.trim()}`
       : `说明：本步不是最后一步；expectation 只写完成本步后的中间可观测状态。`,
-    goalSpaceMarkdown?.trim() || undefined,
+    extraContextMarkdown?.trim() || undefined,
   ].filter(Boolean);
 
   return {
@@ -52,9 +52,11 @@ export interface CompileCoworkCaseOptions {
   onProgress?: (event: CompileProgressEvent) => void | Promise<void>;
   /** 每完成一步写回部分 bundle（可选） */
   onPartial?: (bundle: ConnectedCompiledBundle) => void | Promise<void>;
-  /** Goal Space 检索；编译期通常无截图，走 text_only */
-  goalSpace?: GoalSpaceRetrievePort;
-  goalSpaceRef?: { spaceId: string; version?: string };
+  /**
+   * Business 绑定的逐步上下文（如 Goal Space ContextPack.md）。
+   * 由 server 组装 createGoalSpaceCompileEnricher；compile 本身不依赖 Goal Space。
+   */
+  enrichStepContext?: EnrichCompileStepContext;
 }
 
 export async function compileCoworkCase(
@@ -93,40 +95,30 @@ export async function compileCoworkCase(
       stepText: step.text,
     });
 
-    let goalSpaceMarkdown: string | undefined;
-    if (options?.goalSpace && process.env.COWORK_GOAL_SPACE !== '0') {
-      const spaceId =
-        options.goalSpaceRef?.spaceId ??
-        process.env.GOAL_SPACE_ID?.trim() ??
-        'cowork-android';
-      const version =
-        options.goalSpaceRef?.version ??
-        process.env.GOAL_SPACE_VERSION?.trim();
+    let extraContextMarkdown: string | undefined;
+    if (options?.enrichStepContext) {
       try {
-        const pack = await options.goalSpace.retrieve({
-          spaceId,
-          ref: version ? { spaceId, version } : undefined,
-          intentText: [
-            detail.title,
-            step.text,
-            detail.preconditions,
-            detail.expectedText,
-          ]
-            .filter(Boolean)
-            .join('\n'),
-          strategy: 'text_only',
+        extraContextMarkdown = await options.enrichStepContext({
+          detail,
+          step,
         });
-        goalSpaceMarkdown = pack.textMarkdown;
+        console.log(
+          `[compile-case] step#${step.order} extraContext=${extraContextMarkdown ? `${extraContextMarkdown.length} chars` : 'none'}`,
+        );
       } catch (err) {
         console.warn(
-          '[compile-case] goal-space retrieve skipped:',
+          '[compile-case] enrichStepContext skipped:',
           err instanceof Error ? err.message : err,
         );
       }
+    } else {
+      console.log(
+        `[compile-case] step#${step.order} no enrichStepContext (Goal Space compile inject off)`,
+      );
     }
 
     const { instruction, report } = await compiler.compile(
-      buildStepCompileInput(detail, step, steps.length, goalSpaceMarkdown),
+      buildStepCompileInput(detail, step, steps.length, extraContextMarkdown),
     );
     instructions.push(instruction);
     reports.push(report);

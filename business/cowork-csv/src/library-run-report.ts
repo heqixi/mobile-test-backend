@@ -95,6 +95,27 @@ function appendCaseDumpToReportHtml(
     `</script>`;
   insertScriptBeforeClosingHtml(htmlPath, dumpContent);
 }
+
+/** 单用例 Midscene HTML（自包含，可离线打开） */
+export function writeCaseMidsceneHtml(
+  htmlPath: string,
+  caseResult: LibraryCaseRunResult,
+): void {
+  mkdirSync(dirname(htmlPath), { recursive: true });
+  // 每次重写整份壳，避免增量残留
+  writeFileSync(htmlPath, loadReportHtmlTemplate(), 'utf8');
+  appendCaseDumpToReportHtml(
+    htmlPath,
+    JSON.stringify(caseResult.dump ?? {}),
+    caseResult.attributes ?? {
+      playwright_test_id: caseResult.caseId,
+      playwright_test_title: caseResult.title,
+      playwright_test_description: caseResult.reason ?? '',
+      playwright_test_status: caseResult.status,
+      playwright_test_duration: Math.max(0, Math.round(caseResult.durationMs)),
+    },
+  );
+}
 export interface BuildCaseRunResultInput {
   caseId: string;
   title: string;
@@ -215,13 +236,26 @@ function buildDumpTasks(
     const end = cursor + cost;
     cursor = end;
     const failed = !r.satisfied || r.status === 'failed' || r.status === 'aborted';
+    const thoughtParts = [
+      r.action ? `Action: ${r.action}` : null,
+      r.expectation ? `Expectation: ${r.expectation}` : null,
+      r.executorCommands?.length
+        ? `Commands:\n${r.executorCommands.map((c) => `- ${c}`).join('\n')}`
+        : null,
+      r.reason || null,
+    ].filter(Boolean);
     return {
       taskId: r.instructionId || `${input.caseId}-step-${i + 1}`,
       type: 'Log' as const,
-      subType: 'Screenshot',
+      subType: r.action?.slice(0, 48) || r.label || `Instruction ${i + 1}`,
       status: failed ? ('failed' as const) : ('finished' as const),
-      param: { content: r.label || r.instructionId },
-      thought: r.reason || r.status,
+      param: {
+        content: r.label || r.instructionId,
+        action: r.action,
+        expectation: r.expectation,
+        executorCommands: r.executorCommands,
+      },
+      thought: thoughtParts.join('\n\n') || r.status,
       errorMessage: failed ? r.reason || r.status : undefined,
       timing: { start, end, cost },
       recorder: recorderFromScreenshot(
@@ -339,6 +373,7 @@ function toSummaryItem(report: LibraryRunReport): LibraryRunReportSummaryItem {
 
 /**
  * 将用例结果写成 Midscene HTML（script[type=midscene_web_dump]）并落盘索引。
+ * 传入 reportId 时：合并已有 cases（按 caseId 覆盖），HTML 只追加新增 case 的 dump。
  */
 export function persistLibraryRunReport(options: {
   csvPath: string;
@@ -352,26 +387,59 @@ export function persistLibraryRunReport(options: {
   const reportsDir = reportsDirForCsv(options.csvPath);
   mkdirSync(reportsDir, { recursive: true });
 
+  const existing =
+    options.reportId != null
+      ? getLibraryRunReport(options.csvPath, options.reportId)
+      : null;
+
   const reportId =
     options.reportId ??
     `lib-${new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)}-${randomUUID().slice(0, 8)}`;
-  const createdAt = options.createdAt ?? new Date().toISOString();
+  const createdAt =
+    existing?.createdAt ?? options.createdAt ?? new Date().toISOString();
   const finishedAt = new Date().toISOString();
-  const sdkVersion = getVersion() || 'midscene';
+  const sdkVersion = (existing?.sdkVersion ?? getVersion()) || 'midscene';
   const htmlPath = reportHtmlPath(reportsDir, reportId);
   const dumpPath = reportJsonPath(reportsDir, reportId);
 
-  // Midscene HTML：每个用例一条 dump script + playwright_* attributes。
-  // 不调用 reportHTMLContent：vendored core 未注入 SPA 模板时会写成
-  // REPLACE_ME_WITH_REPORT_HTML 并在找 </html> 时失败。
+  const mergedById = new Map<string, LibraryCaseRunResult>();
+  for (const c of existing?.cases ?? []) {
+    mergedById.set(c.caseId, c);
+  }
+  const newlyAppended: LibraryCaseRunResult[] = [];
   for (const c of options.cases) {
+    const had = mergedById.has(c.caseId);
+    mergedById.set(c.caseId, c);
+    if (!had) newlyAppended.push(c);
+  }
+  // 保持：已有顺序 + 新 case 追加
+  const cases: LibraryCaseRunResult[] = [];
+  const seen = new Set<string>();
+  for (const c of existing?.cases ?? []) {
+    const next = mergedById.get(c.caseId);
+    if (next) {
+      cases.push(next);
+      seen.add(c.caseId);
+    }
+  }
+  for (const c of options.cases) {
+    if (!seen.has(c.caseId)) {
+      cases.push(mergedById.get(c.caseId)!);
+      seen.add(c.caseId);
+    }
+  }
+
+  const toAppendHtml =
+    existing == null ? cases : newlyAppended.length > 0 ? newlyAppended : [];
+
+  for (const c of toAppendHtml) {
     appendCaseDumpToReportHtml(htmlPath, JSON.stringify(c.dump), {
       ...c.attributes,
       playwright_test_duration: c.attributes.playwright_test_duration,
     });
   }
 
-  if (options.cases.length === 0) {
+  if (cases.length === 0 && !existsSync(htmlPath)) {
     appendCaseDumpToReportHtml(
       htmlPath,
       JSON.stringify({
@@ -380,7 +448,7 @@ export function persistLibraryRunReport(options: {
         groupDescription: options.groupDescription,
         modelBriefs: [],
         executions: [],
-        deviceType: options.deviceType,
+        deviceType: options.deviceType ?? existing?.deviceType,
       } satisfies MidsceneReportActionDump),
       {
         playwright_test_id: reportId,
@@ -396,14 +464,16 @@ export function persistLibraryRunReport(options: {
     reportId,
     createdAt,
     finishedAt,
-    groupName: options.groupName,
-    groupDescription: options.groupDescription,
+    groupName: options.groupName || existing?.groupName || 'library run',
+    groupDescription:
+      options.groupDescription ?? existing?.groupDescription,
     sdkVersion,
-    deviceType: options.deviceType,
+    deviceType: options.deviceType ?? existing?.deviceType,
     htmlPath,
     dumpPath,
-    cases: options.cases,
-    summary: summarizeCaseResults(options.cases),
+    cases,
+    summary: summarizeCaseResults(cases),
+    writtenBackAt: existing?.writtenBackAt,
   };
 
   writeFileSync(dumpPath, JSON.stringify(report, null, 2), 'utf8');
