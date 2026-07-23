@@ -18,6 +18,7 @@ export * from './models/keyframe-note.js';
 export * from './models/keyframe.js';
 export * from './models/transition.js';
 export * from './models/goal-space.js';
+export * from './models/space-summary.js';
 export * from './models/capture-session.js';
 export * from './models/ranking.js';
 export * from './models/text-search.js';

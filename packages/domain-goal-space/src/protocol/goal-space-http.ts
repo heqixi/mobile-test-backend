@@ -70,6 +70,10 @@ export const goalSpacePaths = {
   /** 重建派生索引（实现无关） */
   spaceVersionIndexes: (spaceId: string, version: string) =>
     `/api/goal-space/spaces/${encodeURIComponent(spaceId)}/versions/${encodeURIComponent(version)}/indexes:rebuild`,
+  spaceSummary: (spaceId: string) =>
+    `/api/goal-space/spaces/${encodeURIComponent(spaceId)}/summary`,
+  spaceSummaryGenerate: (spaceId: string) =>
+    `/api/goal-space/spaces/${encodeURIComponent(spaceId)}/summary:generate`,
   retrieve: '/api/goal-space/retrieve',
 } as const;
 
@@ -104,6 +108,8 @@ export const goalSpaceRoutePatterns = {
     '/api/goal-space/spaces/:spaceId/versions/:version/opencode-pack',
   spaceVersionIndexesRebuild:
     '/api/goal-space/spaces/:spaceId/versions/:version/indexes:rebuild',
+  spaceSummary: '/api/goal-space/spaces/:spaceId/summary',
+  spaceSummaryGenerate: '/api/goal-space/spaces/:spaceId/summary:generate',
 } as const;
 
 export interface GoalSpaceHealthResponse {
@@ -134,3 +140,8 @@ export type { KeyframeNote } from '../models/keyframe-note.js';
 /** POST /retrieve body ≡ GoalSpaceRetrieveQuery；响应 ≡ ContextPack */
 export type { GoalSpaceRetrieveQuery } from '../models/retrieve.js';
 export type { RebuildGoalSpaceIndexResult } from '../models/index-rebuild.js';
+export type {
+  GoalSpaceSpaceSummary,
+  PutGoalSpaceSpaceSummaryInput,
+  GenerateGoalSpaceSpaceSummaryInput,
+} from '../models/space-summary.js';

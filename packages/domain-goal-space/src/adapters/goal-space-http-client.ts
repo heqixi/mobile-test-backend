@@ -11,6 +11,11 @@ import type {
   GoalSpaceSummary,
   GoalSpaceVersionMeta,
 } from '../models/goal-space.js';
+import type {
+  GenerateGoalSpaceSpaceSummaryInput,
+  GoalSpaceSpaceSummary,
+  PutGoalSpaceSpaceSummaryInput,
+} from '../models/space-summary.js';
 import type { DraftKeyframe } from '../models/keyframe.js';
 import type {
   MarkKeyframeInput,
@@ -80,6 +85,15 @@ export interface GoalSpaceHttpClient extends GoalSpaceRetrievePort {
     input: SessionVisualMatchRequest,
   ): Promise<VisualMatchResult>;
   keyframeScreenshotUrl(sessionId: string, keyframeId: string): string;
+  getSpaceSummary(spaceId: string): Promise<GoalSpaceSpaceSummary | null>;
+  putSpaceSummary(
+    spaceId: string,
+    input: PutGoalSpaceSpaceSummaryInput,
+  ): Promise<GoalSpaceSpaceSummary>;
+  generateSpaceSummary(
+    spaceId: string,
+    input?: GenerateGoalSpaceSpaceSummaryInput,
+  ): Promise<GoalSpaceSpaceSummary>;
   retrieve(query: GoalSpaceRetrieveQuery): Promise<ContextPack>;
 }
 
@@ -93,9 +107,13 @@ export function createGoalSpaceHttpClient(
     method: string,
     path: string,
     body?: unknown,
+    overrideTimeoutMs?: number,
   ): Promise<T> {
     const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+    const timer = setTimeout(
+      () => ctrl.abort(),
+      overrideTimeoutMs ?? timeoutMs,
+    );
     try {
       const res = await fetch(`${baseUrl}${path}`, {
         method,
@@ -178,6 +196,33 @@ export function createGoalSpaceHttpClient(
       request('POST', goalSpacePaths.sessionVisualMatch(sessionId), input),
     keyframeScreenshotUrl: (sessionId, keyframeId) =>
       `${baseUrl}${goalSpacePaths.sessionKeyframeScreenshot(sessionId, keyframeId)}`,
+    getSpaceSummary: async (spaceId) => {
+      try {
+        return await request<GoalSpaceSpaceSummary>(
+          'GET',
+          goalSpacePaths.spaceSummary(spaceId),
+        );
+      } catch (err) {
+        if (
+          err instanceof GoalSpaceDomainError &&
+          (err.code === 'SPACE_NOT_FOUND' ||
+            err.code === 'VERSION_NOT_FOUND' ||
+            Number(err.details?.status) === 404)
+        ) {
+          return null;
+        }
+        throw err;
+      }
+    },
+    putSpaceSummary: (spaceId, input) =>
+      request('PUT', goalSpacePaths.spaceSummary(spaceId), input),
+    generateSpaceSummary: (spaceId, input) =>
+      request(
+        'POST',
+        goalSpacePaths.spaceSummaryGenerate(spaceId),
+        input ?? {},
+        90_000,
+      ),
     retrieve: (query) =>
       request('POST', goalSpacePaths.retrieve, query),
   };

@@ -10,6 +10,7 @@ import type {
   GoalSpaceVersionId,
 } from './ids.js';
 import type { Keyframe } from './keyframe.js';
+import type { GoalSpaceSpaceSummary } from './space-summary.js';
 import type { Transition } from './transition.js';
 
 export interface GoalSpaceSummary {
@@ -19,6 +20,8 @@ export interface GoalSpaceSummary {
   /** 当前默认版本（可选） */
   latestVersion?: GoalSpaceVersionId;
   tags?: string[];
+  /** Space 级可编辑摘要 */
+  summary?: GoalSpaceSpaceSummary;
 }
 
 /**
